@@ -39,8 +39,8 @@ contract Concert  {
     address owner;
     
     // Events
-    event ConcertStatus(uint256 concertID, uint256 concertState);
-    event TicketPurchase(uint256 concertID, uint256 supporterNFTID , uint256 ticketID);
+    event ConcertStatus(uint256 indexed concertID, uint256 indexed concertState);
+    event TicketPurchase(uint256 indexed concertID, uint256 indexed supporterNFTID , uint256 indexed ticketID);
 
     // Constructor
     constructor(address _ticketContract, address _supporterContract) public {
