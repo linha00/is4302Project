@@ -23,11 +23,11 @@ contract Concert  {
         string ticketInfoURI;
         uint256 preSaleTicketPrice;
         uint256 generalSaleTicketPrice;
-        uint256 concertState; // Created, ArtistApproval, VenueApproval, PreSale, GeneralSale, SoldOut, Cancelled, Payout
+        uint256 concertState; // PendingArtistApproval, ArtistApproval, PendingVenueApproval, VenueApproval, PreSale, GeneralSale, SoldOut, Cancelled, Payout
     }
     
     // Enum for Concert State
-    enum ConcertState { Created, PreSale, GeneralSale, SoldOut, Cancelled }
+    enum ConcertState {  PreSale, GeneralSale, SoldOut, Cancelled, Payout, PendingArtistApproval, ArtistApproval, PendingVenueApproval, VenueApproval, Created }
 
     // Storage Memory for Concert
     mapping(uint256 => Listing) public Listings;
@@ -52,6 +52,8 @@ contract Concert  {
         defaultTicketPlatformFeePercentage = 5;
     }
 
+
+
     // Function to create a new concert listing
     function createConcert(
         address _artist,
@@ -73,6 +75,33 @@ contract Concert  {
         uint256 _preSaleTicketPrice,
         uint256 _generalSaleTicketPrice
     ) public {
+       
+        //Error Checking
+        //Payout Check
+        require(_artistPayoutPercentage >= 0, "Artist Payout Percentage must be greater than or equal to 0");
+        require(_artistPayoutPercentage <= 100, "Artist Payout Percentage must be less than or equal to 100");
+        require(_organiserPayoutPercentage >= 0, "Organiser Payout Percentage must be greater than or equal to 0");
+        require(_organiserPayoutPercentage <= 100, "Organiser Payout Percentage must be less than or equal to 100");
+        require(_venuePayoutPercentage >= 0, "Venue Payout Percentage must be greater than or equal to 0");
+        require(_venuePayoutPercentage <= 100, "Venue Payout Percentage must be less than or equal to 100");
+    
+        //Total Tickets Check
+        require(_totalTickets > 0, "Total Tickets must be greater than 0");
+        require(_preSaleQuality <= _totalTickets, "Pre Sale Quality must be less than or equal to Total Tickets");
+
+        //Date Time Check
+        require(_concertStartDateTime > now, "Concert Start Date Time must be greater than current date time");
+        require(_concertEndDateTime > _concertStartDateTime, "Concert End Date Time must be greater than Concert Start Date Time");
+        require(_preSaleStartDateTime > now, "Pre Sale Start Date Time must be greater than current date time");
+        require(_preSaleEndDateTime > _preSaleStartDateTime, "Pre Sale End Date Time must be greater than Pre Sale Start Date Time");
+        require(_generalSaleStartDateTime > _preSaleEndDateTime, "General Sale Start Date Time must be greater than Pre Sale End Date Time");
+        require(_concertStartDateTime > _generalSaleStartDateTime, "Concert Start Date Time must be greater than General Sale Start Date Time");
+        //Ticket Price Check
+        require(_preSaleTicketPrice >= 0, "Pre Sale Ticket Price must be greater than 0");
+        require(_generalSaleTicketPrice >= 0, "General Sale Ticket Price must be greater than 0");
+
+
+
         Listings[concertID] = Listing(
             _artist,
             concertID,
@@ -94,10 +123,14 @@ contract Concert  {
             _ticketInfoURI,
             _preSaleTicketPrice,
             _generalSaleTicketPrice,
-            uint256(ConcertState.Created)
+            uint256(ConcertState.PendingArtistApproval)
         );
+
+        // Concert ID Increment
         concertID++;
-        
+        // Record Concert Status
+        emit ConcertStatus(concertID, uint256(ConcertState.PendingArtistApproval));
+
     }
 
 }
