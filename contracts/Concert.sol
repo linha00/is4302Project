@@ -4,7 +4,7 @@ contract Concert  {
     // Struct for Concert Listing
     struct Listing {
         address artist;
-        uint256 id;
+        uint256 concertID;
         address venue;
         address organiser;
         uint256 artistPayoutPercentage;
@@ -23,7 +23,25 @@ contract Concert  {
         string ticketInfoURI;
         uint256 preSaleTicketPrice;
         uint256 generalSaleTicketPrice;
-        uint256 concertState; // 0 - Created, 1 - PreSale, 2 - GeneralSale, 3 - SoldOut, 4 - Cancelled
+        uint256 concertState; // Created, ArtistApproval, VenueApproval, PreSale, GeneralSale, SoldOut, Cancelled, Payout
     }
+    
+    // Enum for Concert State
+    enum ConcertState { Created, PreSale, GeneralSale, SoldOut, Cancelled }
+
+    // Storage Memory for Concert
+    mapping(uint256 => Listing) public Listings;
+    uint256 public defaultConcertPlatformPayoutPercentage;
+    uint256 public defaultTicketPlatformFeePercentage;
+    address ticketContract;
+    uint256 concertID;
+    address supporterContract;
+    
+    // Events
+    event ConcertStatus(uint256 concertID, uint256 concertState);
+    event TicketPurchase(uint256 concertID, uint256 supporterNFTID , uint256 ticketID);
+
+
+
 
 }
