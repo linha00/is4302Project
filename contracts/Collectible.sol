@@ -2,16 +2,14 @@ pragma solidity ^0.5.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-contract Supporter is IERC721 {
+contract Collectible is IERC721 {
     
     struct Metadata {
-        uint256 concertId;
         uint256 tokenId;
         string tokenURI;
         address owner;
         address previousOwner;
         address artist;
-        bool transferrable;
     }
 
     address public owner;
@@ -19,9 +17,9 @@ contract Supporter is IERC721 {
     mapping(address=> mapping (address => bool)) private operatorApprovalsForAll;
     mapping(uint256 => address) private operatorApprovals;
 
-    mapping(uint256 => Metadata) public supportersMetadata;
+    mapping(uint256 => Metadata) public collectiblesMetadata;
 
-    // Keep Track of the total number of Token a user has
+    // Keep Track of the total number of tokens a user has
     mapping(address => uint256) private balances;
 
     // Events from IERC721
@@ -52,7 +50,7 @@ contract Supporter is IERC721 {
     }
 
     modifier isTokenOwner(uint256 _tokenId, address _owner) {
-        require(supportersMetadata[_tokenId].owner == _owner, "Not the owner of the token");
+        require(collectiblesMetadata[_tokenId].owner == _owner, "Not the owner of the token");
         _;
     }
 
@@ -68,18 +66,13 @@ contract Supporter is IERC721 {
 
     modifier checkApproval(address _from, address _to, uint256 _tokenId) {
         if(msg.sender != _from) {
-            require( msg.sender == owner || operatorApprovalsForAll[supportersMetadata[_tokenId].owner][msg.sender] == true || operatorApprovals[_tokenId] == msg.sender, "Caller is not approved to transfer this token");
+            require( msg.sender == owner || operatorApprovalsForAll[collectiblesMetadata[_tokenId].owner][msg.sender] == true || operatorApprovals[_tokenId] == msg.sender, "Caller is not approved to transfer this token");
         }
         _;
     }
 
     modifier tokenExists(uint256 _tokenId) {
-        require(supportersMetadata[_tokenId].owner != address(0), "Token does not exist");
-        _;
-    }
-
-    modifier isTransferrable(uint256 _tokenId) {
-        require(supportersMetadata[_tokenId].transferrable == true, "Token is not transferrable");
+        require(collectiblesMetadata[_tokenId].owner != address(0), "Token does not exist");
         _;
     }
 
@@ -88,7 +81,7 @@ contract Supporter is IERC721 {
     }
 
     function ownerOf(uint256 _tokenId) external view tokenExists(_tokenId) returns (address) {
-        return supportersMetadata[_tokenId].owner;
+        return collectiblesMetadata[_tokenId].owner;
     }
 
 
@@ -97,14 +90,14 @@ contract Supporter is IERC721 {
     }
 
     function updateTokenOwner(uint256 _tokenId, address _to) private {
-        supportersMetadata[_tokenId].previousOwner = supportersMetadata[_tokenId].owner;
-        supportersMetadata[_tokenId].owner = _to;
-        balances[supportersMetadata[_tokenId].previousOwner ] -= 1;
+        collectiblesMetadata[_tokenId].previousOwner = collectiblesMetadata[_tokenId].owner;
+        collectiblesMetadata[_tokenId].owner = _to;
+        balances[collectiblesMetadata[_tokenId].previousOwner ] -= 1;
         balances[_to] += 1;
     }
 
 
-    function safeTransferFrom(address _from, address _to, uint256 _tokenId) public isTransferrable(_tokenId) toCannotBeZero(_to) fromCannotBeZero(_from) isNotContract(_to) tokenExists(_tokenId) isTokenOwner(_tokenId, _from) checkApproval(_from, _to, _tokenId) {
+    function safeTransferFrom(address _from, address _to, uint256 _tokenId) public toCannotBeZero(_to) fromCannotBeZero(_from) isNotContract(_to) tokenExists(_tokenId) isTokenOwner(_tokenId, _from) checkApproval(_from, _to, _tokenId) {
         updateTokenOwner(_tokenId, _to);
         removeApproval(_tokenId);
         emit Transfer(_from, _to, _tokenId);
@@ -121,7 +114,7 @@ contract Supporter is IERC721 {
 
     function approve(address _approved, uint256 _tokenId) external tokenExists(_tokenId) {
         //The caller must own the token or be an approved operator.
-        require (msg.sender == owner || operatorApprovalsForAll[supportersMetadata[_tokenId].owner][msg.sender] == true, "Caller is not approved to approve this token"); 
+        require (msg.sender == owner || operatorApprovalsForAll[collectiblesMetadata[_tokenId].owner][msg.sender] == true, "Caller is not approved to approve this token"); 
         operatorApprovals[_tokenId] = _approved;
         emit Approval(msg.sender, _approved, _tokenId);
     }
@@ -141,13 +134,9 @@ contract Supporter is IERC721 {
         return operatorApprovalsForAll[_owner][_operator];
     }
 
-    function setTransferrable(uint256 _tokenId, bool _transferrable) external tokenExists(_tokenId)  {
-        require(msg.sender == supportersMetadata[_tokenId].owner || tx.origin == supportersMetadata[_tokenId].artist, "Caller is not the owner or artist of the token");
-        supportersMetadata[_tokenId].transferrable = _transferrable;
-    }
 
-    function mint(address _to, uint256 _concertId, string calldata _tokenURI, address _artist) external isOwner() {
-        supportersMetadata[tokenId] = Metadata(_concertId, tokenId, _tokenURI, _to, address(0), _artist, false);
+    function mint(address _to, string calldata _tokenURI, address _artist) external isOwner() {
+        collectiblesMetadata[tokenId] = Metadata(tokenId, _tokenURI, _to, address(0), _artist);
         balances[_to] += 1;
         tokenId += 1;
         emit Transfer(address(0), _to, tokenId);
