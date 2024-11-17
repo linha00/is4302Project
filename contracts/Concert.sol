@@ -29,6 +29,7 @@ contract Concert  {
     // Enum for Concert State
     enum ConcertState {  PreSale, GeneralSale, SoldOut, Cancelled, Payout, PendingArtistApproval, ArtistApproval, PendingVenueApproval, VenueApproval, Created }
 
+
     // Storage Memory for Concert
     mapping(uint256 => Listing) public Listings;
     uint256 public defaultConcertPlatformPayoutPercentage;
@@ -36,6 +37,7 @@ contract Concert  {
     address ticketContract;
     uint256 concertID;
     address supporterContract;
+
     address owner;
     
     // Events
