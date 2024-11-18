@@ -1,6 +1,9 @@
 pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
+import "./Supporter.sol";
+import "./Ticket.sol";
+
 contract Concert  {
     // Struct for Concert Listing
     struct Listing {
@@ -33,18 +36,18 @@ contract Concert  {
 
     uint256 concertID;
 
-    address supporterContract;
+    Supporter public supporterContract;
     address owner;
-    address ticketContract;
+    Ticket public ticketContract;
 
     // Events
     event ConcertStatus(uint256 indexed concertID, uint256 indexed concertState);
     event TicketPurchase(uint256 indexed concertID, uint256 indexed supporterNFTID , uint256 indexed ticketID);
 
     // Constructor
-    constructor(address _ticketContract, address _supporterContract) public {
-        ticketContract = _ticketContract;
-        supporterContract = _supporterContract;
+    constructor(Ticket _ticketAddress, Supporter _supporterAddress) public {
+        ticketContract = _ticketAddress;
+        supporterContract = _supporterAddress;
         owner = msg.sender;
         concertID = 1;
         defaultConcertPlatformPayoutPercentage = 10;
