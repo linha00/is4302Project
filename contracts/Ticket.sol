@@ -112,11 +112,11 @@ contract Ticket is IERC721 {
     }
 
     function safeTransferFrom(address _from, address _to, uint256 _tokenId) public 
-            toCannotBeZero(_to) 
-            fromCannotBeZero(_from) 
-            isNotContract(_to) 
             tokenExists(_tokenId) 
             isTokenOwner(_tokenId, _from) 
+            isNotContract(_to)
+            toCannotBeZero(_to) 
+            fromCannotBeZero(_from) 
             checkApproval(_from, _to, _tokenId) {
    
         updateTokenOwner(_tokenId, _to);
