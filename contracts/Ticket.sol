@@ -1,16 +1,13 @@
 pragma solidity ^0.5.0;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "./Contract.sol";
+import {IERC721} from "../interfaces/IERC721.sol";
+import {IERC165} from "../interfaces/IERC165.sol";
 
-
-contract Ticket is IERC721 {
+contract Ticket is IERC721, IERC165 {
     
-    Concert public concertContract;
 
     struct Metadata {
         uint256 concertId;
-        uint256 ticketId;
         uint256 ticketPrice;
         string ticketURI;
         address owner;
@@ -18,13 +15,14 @@ contract Ticket is IERC721 {
         address artist;
     }
 
+    bytes4 private constant INTERFACE_ID_ERC721 = 0x80ac58cd;
+    
     address public owner;
+    
     uint256 public ticketId;
     mapping(address=> mapping (address => bool)) private operatorApprovalsForAll;
     mapping(uint256 => address) private operatorApprovals;
-
     mapping(uint256 => Metadata) public ticketsMetadata;
-
     // Keep Track of the total number of tickets a user has
     mapping(address => uint256) private balances;
 
@@ -39,9 +37,8 @@ contract Ticket is IERC721 {
     */
 
     // Constructor
-    constructor(address _concertContract) public {
+    constructor() public {
         owner = msg.sender;
-        concertContract = Concert(_concertContract);
     }
 
     // modifiers
@@ -91,6 +88,9 @@ contract Ticket is IERC721 {
         _;
     }
 
+    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
+        return interfaceId == INTERFACE_ID_ERC721;
+    }
 
     function balanceOf(address _owner) external view returns (uint256) {
         return balances[_owner];
@@ -98,6 +98,22 @@ contract Ticket is IERC721 {
 
     function ownerOf(uint256 _tokenId) external view tokenExists(_tokenId) returns (address) {
         return ticketsMetadata[_tokenId].owner;
+    }
+
+    function getTicketPrice(uint256 _tokenId) external view tokenExists(_tokenId) returns (uint256) {
+        return ticketsMetadata[_tokenId].ticketPrice;
+    }
+
+    function getTicketConcertId(uint256 _tokenId) external view tokenExists(_tokenId) returns (uint256) {
+        return ticketsMetadata[_tokenId].concertId;
+    }
+
+    function getTicketURI(uint256 _tokenId) external view tokenExists(_tokenId) returns (string memory) {
+        return ticketsMetadata[_tokenId].ticketURI;
+    }
+
+    function getPreviousOwner(uint256 _tokenId) external view tokenExists(_tokenId) returns (address) {
+        return ticketsMetadata[_tokenId].previousOwner;
     }
 
     function removeApproval(uint256 _tokenId) private {
@@ -156,7 +172,7 @@ contract Ticket is IERC721 {
     }
 
     function mint(address _to, uint256 _concertId, uint256 _ticketPrice, string calldata _ticketURI, address _artist ) external isOwner() {
-        ticketsMetadata[ticketId] = Metadata(_concertId, ticketId, _ticketPrice, _ticketURI, _to, address(0), _artist);
+        ticketsMetadata[ticketId] = Metadata(_concertId, _ticketPrice, _ticketURI, _to, address(0), _artist);
         balances[_to] += 1;
         ticketId += 1;
         emit Transfer(address(0), _to, ticketId);
@@ -173,17 +189,8 @@ contract Ticket is IERC721 {
         }
         return attendees;
     }
-    
-    function useTicket(uint256 ticketId) external tokenExists(ticketId) {
-        // fetch address of organiser of event
-        address organiser = concertContract.Listings(concertId).organiser;
 
-        // only the organiser || the owner of the contract
-        require(
-            organiser == msg.sender || 
-            owner == msg.sender
-        , "Caller is not authorized to use the ticket");
-
+    function useTicket(uint256 _ticketId) external tokenExists(_ticketId) isTokenOwner(_ticketId,tx.origin) {
         require(!usedTickets[ticketId], "Ticket already used");
         usedTickets[ticketId] = true;
     }

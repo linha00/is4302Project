@@ -1,12 +1,12 @@
 pragma solidity ^0.5.0;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC721} from "../interfaces/IERC721.sol";
+import {IERC165} from "../interfaces/IERC165.sol";
 
-contract Supporter is IERC721 {
+contract Supporter is IERC721, IERC165 {
     
     struct Metadata {
         uint256 concertId;
-        uint256 tokenId;
         string tokenURI;
         address owner;
         address previousOwner;
@@ -14,13 +14,15 @@ contract Supporter is IERC721 {
         bool transferrable;
     }
 
+    bytes4 private constant INTERFACE_ID_ERC721 = 0x80ac58cd;
+
     address public owner;
+    
     uint256 public tokenId;
+
     mapping(address=> mapping (address => bool)) private operatorApprovalsForAll;
     mapping(uint256 => address) private operatorApprovals;
-
     mapping(uint256 => Metadata) public supportersMetadata;
-
     // Keep Track of the total number of Token a user has
     mapping(address => uint256) private balances;
 
@@ -81,6 +83,12 @@ contract Supporter is IERC721 {
     modifier isTransferrable(uint256 _tokenId) {
         require(supportersMetadata[_tokenId].transferrable == true, "Token is not transferrable");
         _;
+    }
+
+    
+    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
+    return 
+        interfaceId == INTERFACE_ID_ERC721;
     }
 
     function balanceOf(address _owner) external view returns (uint256) {
@@ -147,7 +155,7 @@ contract Supporter is IERC721 {
     }
 
     function mint(address _to, uint256 _concertId, string calldata _tokenURI, address _artist) external isOwner() {
-        supportersMetadata[tokenId] = Metadata(_concertId, tokenId, _tokenURI, _to, address(0), _artist, false);
+        supportersMetadata[tokenId] = Metadata(_concertId, _tokenURI, _to, address(0), _artist, false);
         balances[_to] += 1;
         tokenId += 1;
         emit Transfer(address(0), _to, tokenId);

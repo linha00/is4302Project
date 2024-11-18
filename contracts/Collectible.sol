@@ -1,26 +1,29 @@
 pragma solidity ^0.5.0;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC721} from "../interfaces/IERC721.sol";
+import {IERC165} from "../interfaces/IERC165.sol";
 
-contract Collectible is IERC721 {
+contract Collectible is IERC721, IERC165 {
     
     struct Metadata {
-        uint256 tokenId;
         string tokenURI;
         address owner;
         address previousOwner;
         address artist;
     }
+    
+    bytes4 private constant INTERFACE_ID_ERC721 = 0x80ac58cd;
 
     address public owner;
+    
     uint256 public tokenId;
+    
 
     mapping(address=> mapping (address => bool)) private operatorApprovalsForAll;
     mapping(uint256 => address) private operatorApprovals;
 
     // storage of collectibles
     mapping(uint256 => Metadata) public collectiblesMetadata;
-
     // Keep Track of the total number of tokens a user has
     mapping(address => uint256) private balances;
 
@@ -83,6 +86,9 @@ contract Collectible is IERC721 {
         _;
     }
 
+    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
+        return interfaceId == INTERFACE_ID_ERC721;
+    }
 
     function balanceOf(address _owner) external view returns (uint256) {
         return balances[_owner];
@@ -148,7 +154,7 @@ contract Collectible is IERC721 {
 
 
     function mint(address _to, string calldata _tokenURI, address _artist) external isOwner() {
-        collectiblesMetadata[tokenId] = Metadata(tokenId, _tokenURI, _to, address(0), _artist);
+        collectiblesMetadata[tokenId] = Metadata(_tokenURI, _to, address(0), _artist);
         balances[_to] += 1;
         tokenId += 1;
         emit Transfer(address(0), _to, tokenId);
