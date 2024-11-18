@@ -1,12 +1,12 @@
 pragma solidity ^0.5.0;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC721} from "../interfaces/IERC721.sol";
+import {IERC165} from "../interfaces/IERC165.sol";
 
-contract Ticket is IERC721 {
+contract Ticket is IERC721, IERC165 {
     
     struct Metadata {
         uint256 concertId;
-        uint256 ticketId;
         uint256 ticketPrice;
         string ticketURI;
         address owner;
@@ -14,13 +14,14 @@ contract Ticket is IERC721 {
         address artist;
     }
 
+    bytes4 private constant INTERFACE_ID_ERC721 = 0x80ac58cd;
+    
     address public owner;
+    
     uint256 public ticketId;
     mapping(address=> mapping (address => bool)) private operatorApprovalsForAll;
     mapping(uint256 => address) private operatorApprovals;
-
     mapping(uint256 => Metadata) public ticketsMetadata;
-
     // Keep Track of the total number of tickets a user has
     mapping(address => uint256) private balances;
 
@@ -76,6 +77,10 @@ contract Ticket is IERC721 {
     modifier tokenExists(uint256 _tokenId) {
         require(ticketsMetadata[_tokenId].owner != address(0), "Token does not exist");
         _;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
+        return interfaceId == INTERFACE_ID_ERC721;
     }
 
     function balanceOf(address _owner) external view returns (uint256) {

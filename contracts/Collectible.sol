@@ -1,11 +1,11 @@
 pragma solidity ^0.5.0;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC721} from "../interfaces/IERC721.sol";
+import {IERC165} from "../interfaces/IERC165.sol";
 
-contract Collectible is IERC721 {
+contract Collectible is IERC721, IERC165 {
     
     struct Metadata {
-        uint256 tokenId;
         string tokenURI;
         address owner;
         address previousOwner;
@@ -74,6 +74,10 @@ contract Collectible is IERC721 {
     modifier tokenExists(uint256 _tokenId) {
         require(collectiblesMetadata[_tokenId].owner != address(0), "Token does not exist");
         _;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
+        return interfaceId == INTERFACE_ID_ERC721;
     }
 
     function balanceOf(address _owner) external view returns (uint256) {
