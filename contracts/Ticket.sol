@@ -143,7 +143,7 @@ contract Ticket is IERC721, IERC165 {
     }
 
     function mint(address _to, uint256 _concertId, uint256 _ticketPrice, string calldata _ticketURI, address _artist ) external isOwner() {
-        ticketsMetadata[ticketId] = Metadata(_concertId, ticketId, _ticketPrice, _ticketURI, _to, address(0), _artist);
+        ticketsMetadata[ticketId] = Metadata(_concertId, _ticketPrice, _ticketURI, _to, address(0), _artist);
         balances[_to] += 1;
         ticketId += 1;
         emit Transfer(address(0), _to, ticketId);
