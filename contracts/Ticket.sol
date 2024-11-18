@@ -79,7 +79,7 @@ contract Ticket is IERC721, IERC165 {
         _;
     }
 
-    function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
         return interfaceId == INTERFACE_ID_ERC721;
     }
 

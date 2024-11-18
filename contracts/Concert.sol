@@ -89,7 +89,7 @@ contract Concert  {
         string calldata _ticketInfoURI,
         uint256 _preSaleTicketPrice,
         uint256 _generalSaleTicketPrice
-    ) external onlyApprovedOrganiser() {
+    ) external onlyApprovedOrganiser() returns (uint256) {
        
         //Error Checking
 
@@ -100,7 +100,8 @@ contract Concert  {
         require(_organiserPayoutPercentage <= 100, "Organiser Payout Percentage must be less than or equal to 100");
         require(_venuePayoutPercentage >= 0, "Venue Payout Percentage must be greater than or equal to 0");
         require(_venuePayoutPercentage <= 100, "Venue Payout Percentage must be less than or equal to 100");
-    
+        require(_artistPayoutPercentage + _organiserPayoutPercentage + _venuePayoutPercentage + defaultConcertPlatformPayoutPercentage == 100, "Total Payout Percentage must be equal to 100");
+
         //Total Tickets Check
         require(_totalTickets > 0, "Total Tickets must be greater than 0");
         require(_preSaleQuality <= _totalTickets, "Pre Sale Quality must be less than or equal to Total Tickets");
@@ -125,10 +126,12 @@ contract Concert  {
         );
 
 
-        // Concert ID Increment
-        concertID++;
+
         // Record Concert Status
         emit ConcertStatus(concertID, uint256(ConcertState.OrganiserApproved));
+        // Concert ID Increment
+        concertID++;
+        return concertID-1;
     }
 
     // Get all Concerts where Start Date Time is greater than current date time + 1 day
@@ -142,6 +145,10 @@ contract Concert  {
         }
         return listing;
     } 
+
+    function getListing(uint256 _concertID) external view returns (Listing memory) {
+        return Listings[_concertID];
+    }
 
     // Venue approve Concert
     function venueApproveConcert(uint256 _concertID) external {
@@ -170,6 +177,18 @@ contract Concert  {
         } else {
             Listings[_concertID].concertState = uint256(ConcertState.GeneralSale);
         }
+    }
+
+    function checkVenueAddressApproval(address venue) external view returns (bool) {
+        return venuesApproval[venue];
+    }
+
+    function checkArtistAddressApproval(address artist) external view returns (bool) {
+        return artistsApproval[artist];
+    }
+
+    function checkOrganiserAddressApproval(address organiser) external view returns (bool) {
+        return organisersApproval[organiser];
     }
 
 }
