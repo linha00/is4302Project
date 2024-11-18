@@ -1,9 +1,13 @@
 pragma solidity ^0.5.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "./Contract.sol";
+
 
 contract Ticket is IERC721 {
     
+    Concert public concertContract;
+
     struct Metadata {
         uint256 concertId;
         uint256 ticketId;
@@ -24,6 +28,9 @@ contract Ticket is IERC721 {
     // Keep Track of the total number of tickets a user has
     mapping(address => uint256) private balances;
 
+    // Keep track of the ticket used
+    mapping(uint256 => bool) public usedTickets;
+
     // Events from IERC721
     /*
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
@@ -32,10 +39,12 @@ contract Ticket is IERC721 {
     */
 
     // Constructor
-    constructor() public {
+    constructor(address _concertContract) public {
         owner = msg.sender;
+        concertContract = Concert(_concertContract);
     }
 
+    // modifiers
     modifier isOwner() {
         require(msg.sender == owner, "Caller is not the owner");
         _;
@@ -68,7 +77,11 @@ contract Ticket is IERC721 {
 
     modifier checkApproval(address _from, address _to, uint256 _tokenId) {
         if(msg.sender != _from) {
-            require( msg.sender == owner || operatorApprovalsForAll[ticketsMetadata[_tokenId].owner][msg.sender] == true || operatorApprovals[_tokenId] == msg.sender, "Caller is not approved to transfer this token");
+            require( 
+                msg.sender == owner || 
+                operatorApprovalsForAll[ticketsMetadata[_tokenId].owner][msg.sender] == true || 
+                operatorApprovals[_tokenId] == msg.sender
+            , "Caller is not approved to transfer this token");
         }
         _;
     }
@@ -78,6 +91,7 @@ contract Ticket is IERC721 {
         _;
     }
 
+
     function balanceOf(address _owner) external view returns (uint256) {
         return balances[_owner];
     }
@@ -85,7 +99,6 @@ contract Ticket is IERC721 {
     function ownerOf(uint256 _tokenId) external view tokenExists(_tokenId) returns (address) {
         return ticketsMetadata[_tokenId].owner;
     }
-
 
     function removeApproval(uint256 _tokenId) private {
         operatorApprovals[_tokenId] = address(0); 
@@ -98,8 +111,13 @@ contract Ticket is IERC721 {
         balances[_to] += 1;
     }
 
-
-    function safeTransferFrom(address _from, address _to, uint256 _tokenId) public toCannotBeZero(_to) fromCannotBeZero(_from) isNotContract(_to) tokenExists(_tokenId) isTokenOwner(_tokenId, _from) checkApproval(_from, _to, _tokenId) {
+    function safeTransferFrom(address _from, address _to, uint256 _tokenId) public 
+            toCannotBeZero(_to) 
+            fromCannotBeZero(_from) 
+            isNotContract(_to) 
+            tokenExists(_tokenId) 
+            isTokenOwner(_tokenId, _from) 
+            checkApproval(_from, _to, _tokenId) {
    
         updateTokenOwner(_tokenId, _to);
         removeApproval(_tokenId);
@@ -156,4 +174,18 @@ contract Ticket is IERC721 {
         return attendees;
     }
     
+    function useTicket(uint256 ticketId) external tokenExists(ticketId) {
+        // fetch address of organiser of event
+        address organiser = concertContract.Listings(concertId).organiser;
+
+        // only the organiser || the owner of the contract
+        require(
+            organiser == msg.sender || 
+            owner == msg.sender
+        , "Caller is not authorized to use the ticket");
+
+        require(!usedTickets[ticketId], "Ticket already used");
+        usedTickets[ticketId] = true;
+    }
+
 }

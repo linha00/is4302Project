@@ -14,9 +14,11 @@ contract Collectible is IERC721 {
 
     address public owner;
     uint256 public tokenId;
+
     mapping(address=> mapping (address => bool)) private operatorApprovalsForAll;
     mapping(uint256 => address) private operatorApprovals;
 
+    // storage of collectibles
     mapping(uint256 => Metadata) public collectiblesMetadata;
 
     // Keep Track of the total number of tokens a user has
@@ -64,9 +66,14 @@ contract Collectible is IERC721 {
         _;
     }
 
+    // check if sender is the contract owner or owner of collectible or have approval for all 
     modifier checkApproval(address _from, address _to, uint256 _tokenId) {
         if(msg.sender != _from) {
-            require( msg.sender == owner || operatorApprovalsForAll[collectiblesMetadata[_tokenId].owner][msg.sender] == true || operatorApprovals[_tokenId] == msg.sender, "Caller is not approved to transfer this token");
+            require( 
+                msg.sender == owner || 
+                operatorApprovalsForAll[collectiblesMetadata[_tokenId].owner][msg.sender] == true || 
+                operatorApprovals[_tokenId] == msg.sender
+            , "Caller is not approved to transfer this token");
         }
         _;
     }
@@ -76,6 +83,7 @@ contract Collectible is IERC721 {
         _;
     }
 
+
     function balanceOf(address _owner) external view returns (uint256) {
         return balances[_owner];
     }
@@ -83,7 +91,6 @@ contract Collectible is IERC721 {
     function ownerOf(uint256 _tokenId) external view tokenExists(_tokenId) returns (address) {
         return collectiblesMetadata[_tokenId].owner;
     }
-
 
     function removeApproval(uint256 _tokenId) private {
         operatorApprovals[_tokenId] = address(0); 
@@ -96,8 +103,13 @@ contract Collectible is IERC721 {
         balances[_to] += 1;
     }
 
-
-    function safeTransferFrom(address _from, address _to, uint256 _tokenId) public toCannotBeZero(_to) fromCannotBeZero(_from) isNotContract(_to) tokenExists(_tokenId) isTokenOwner(_tokenId, _from) checkApproval(_from, _to, _tokenId) {
+    function safeTransferFrom(address _from, address _to, uint256 _tokenId) public 
+            toCannotBeZero(_to) 
+            fromCannotBeZero(_from) 
+            isNotContract(_to) 
+            tokenExists(_tokenId) 
+            isTokenOwner(_tokenId, _from) 
+            checkApproval(_from, _to, _tokenId) {
         updateTokenOwner(_tokenId, _to);
         removeApproval(_tokenId);
         emit Transfer(_from, _to, _tokenId);
