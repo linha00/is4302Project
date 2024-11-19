@@ -128,8 +128,6 @@ contract Concert  {
             uint256(ConcertState.PendingVenueApproval)
         );
 
-
-
         // Record Concert Status
         emit ConcertStatus(concertID, uint256(ConcertState.OrganiserApproved));
         // Concert ID Increment
