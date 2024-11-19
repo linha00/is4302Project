@@ -194,4 +194,51 @@ contract Concert  {
         return organisersApproval[organiser];
     }
 
+    function buyTicket(uint256 _concertID) external payable {
+        require(_concertID < concertID, "Concert does not exist");
+        require(Listings[_concertID].concertState == uint256(ConcertState.PreSale) || Listings[_concertID].concertState == uint256(ConcertState.GeneralSale), "Tickets are not on sale now");
+
+        //Pre sale
+        if (Listings[_concertID].concertState == uint256(ConcertState.PreSale)) {
+            require(msg.value >= Listings[_concertID].preSaleTicketPrice, "Insufficient amount paid for pre sale ticket");
+            
+            // Mint ticket
+            ticketContract.mint(msg.sender, _concertID, Listings[_concertID].preSaleTicketPrice, Listings[_concertID].ticketInfoURI, Listings[_concertID].artist);
+
+            // Update tickets sold and concert status
+            ticketsSold[_concertID]++;
+            if (ticketsSold[_concertID] == Listings[_concertID].preSaleQuantity) {
+                Listings[_concertID].concertState = uint256(ConcertState.PreSaleOver);
+                emit ConcertStatus(_concertID, uint256(ConcertState.PreSaleOver));
+            }
+
+            // Return any change
+            if (msg.value > Listings[_concertID].preSaleTicketPrice) {
+                uint256 change = msg.value - Listings[_concertID].preSaleTicketPrice;
+                (bool sent, ) = msg.sender.call.value(change)("");
+                require(sent, "Failed to Return Change");
+            }
+
+        } else { // General sale
+            require(msg.value >= Listings[_concertID].generalSaleTicketPrice, "Insufficient amount paid for general sale ticket");
+            
+            // Mint ticket
+            ticketContract.mint(msg.sender, _concertID, Listings[_concertID].generalSaleTicketPrice, Listings[_concertID].ticketInfoURI, Listings[_concertID].artist);
+
+            // Update tickets sold and concert status
+            ticketsSold[_concertID]++;
+            if (ticketsSold[_concertID] == Listings[_concertID].totalTickets) {
+                Listings[_concertID].concertState = uint256(ConcertState.SoldOut);
+                emit ConcertStatus(_concertID, uint256(ConcertState.SoldOut));
+            }
+
+            // Return any change
+            if (msg.value > Listings[_concertID].generalSaleTicketPrice) {
+                uint256 change = msg.value - Listings[_concertID].generalSaleTicketPrice;
+                (bool sent, ) = msg.sender.call.value(change)("");
+                require(sent, "Failed to Return Change");
+            }
+        }
+
+    }
 }
