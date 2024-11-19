@@ -1,584 +1,19 @@
 import os
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException
-from ipfs.ipfs import add_file, download_file
+from ipfs.ipfs import add_file
 from web3 import Web3
 from datetime import datetime
 from pydantic import BaseModel
 import json
+import dotenv
+
+dotenv.load_dotenv()
 
 w3 = Web3(Web3.HTTPProvider('http://127.0.0.1:7545'))
-address = '0xAC2f6b81d78f9Aa9D0dbe297B9D65B0D57C3A46e'
-account = "0xb5416d3334556E6E52e5e100b01892Ee7912a262"
-private_key = "0x0a1c8df386c5cb1f8ab9869c76e41ac77c1d45256de5e6c0f5616d6757af42f8"
-abi= """[
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "supporterContract",
-		"outputs": [
-			{
-				"name": "",
-				"type": "address"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "_concertID",
-				"type": "uint256"
-			}
-		],
-		"name": "getListing",
-		"outputs": [
-			{
-				"components": [
-					{
-						"name": "artist",
-						"type": "address"
-					},
-					{
-						"name": "venue",
-						"type": "address"
-					},
-					{
-						"name": "organiser",
-						"type": "address"
-					},
-					{
-						"name": "artistPayoutPercentage",
-						"type": "uint256"
-					},
-					{
-						"name": "organiserPayoutPercentage",
-						"type": "uint256"
-					},
-					{
-						"name": "venuePayoutPercentage",
-						"type": "uint256"
-					},
-					{
-						"name": "totalTickets",
-						"type": "uint256"
-					},
-					{
-						"name": "ticketInfoURI",
-						"type": "string"
-					},
-					{
-						"name": "preSaleQuantity",
-						"type": "uint256"
-					},
-					{
-						"name": "preSaleTicketPrice",
-						"type": "uint256"
-					},
-					{
-						"name": "generalSaleTicketPrice",
-						"type": "uint256"
-					},
-					{
-						"name": "concertState",
-						"type": "uint256"
-					}
-				],
-				"name": "",
-				"type": "tuple"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "_concertID",
-				"type": "uint256"
-			}
-		],
-		"name": "artistApproveConcert",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "defaultTicketPlatformFeePercentage",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"name": "Listings",
-		"outputs": [
-			{
-				"name": "artist",
-				"type": "address"
-			},
-			{
-				"name": "venue",
-				"type": "address"
-			},
-			{
-				"name": "organiser",
-				"type": "address"
-			},
-			{
-				"name": "artistPayoutPercentage",
-				"type": "uint256"
-			},
-			{
-				"name": "organiserPayoutPercentage",
-				"type": "uint256"
-			},
-			{
-				"name": "venuePayoutPercentage",
-				"type": "uint256"
-			},
-			{
-				"name": "totalTickets",
-				"type": "uint256"
-			},
-			{
-				"name": "ticketInfoURI",
-				"type": "string"
-			},
-			{
-				"name": "preSaleQuantity",
-				"type": "uint256"
-			},
-			{
-				"name": "preSaleTicketPrice",
-				"type": "uint256"
-			},
-			{
-				"name": "generalSaleTicketPrice",
-				"type": "uint256"
-			},
-			{
-				"name": "concertState",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "",
-				"type": "address"
-			}
-		],
-		"name": "organisersApproval",
-		"outputs": [
-			{
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "",
-				"type": "address"
-			}
-		],
-		"name": "venuesApproval",
-		"outputs": [
-			{
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "venue",
-				"type": "address"
-			}
-		],
-		"name": "checkVenueAddressApproval",
-		"outputs": [
-			{
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "ticketContract",
-		"outputs": [
-			{
-				"name": "",
-				"type": "address"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "_artist",
-				"type": "address"
-			}
-		],
-		"name": "approveArtist",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "_artist",
-				"type": "address"
-			},
-			{
-				"name": "_venue",
-				"type": "address"
-			},
-			{
-				"name": "_artistPayoutPercentage",
-				"type": "uint256"
-			},
-			{
-				"name": "_organiserPayoutPercentage",
-				"type": "uint256"
-			},
-			{
-				"name": "_venuePayoutPercentage",
-				"type": "uint256"
-			},
-			{
-				"name": "_totalTickets",
-				"type": "uint256"
-			},
-			{
-				"name": "_preSaleQuality",
-				"type": "uint256"
-			},
-			{
-				"name": "_ticketInfoURI",
-				"type": "string"
-			},
-			{
-				"name": "_preSaleTicketPrice",
-				"type": "uint256"
-			},
-			{
-				"name": "_generalSaleTicketPrice",
-				"type": "uint256"
-			}
-		],
-		"name": "createConcert",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "artist",
-				"type": "address"
-			}
-		],
-		"name": "checkArtistAddressApproval",
-		"outputs": [
-			{
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "_venue",
-				"type": "address"
-			}
-		],
-		"name": "approveVenue",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "defaultConcertPlatformPayoutPercentage",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "",
-				"type": "address"
-			}
-		],
-		"name": "artistsApproval",
-		"outputs": [
-			{
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "_organiser",
-				"type": "address"
-			}
-		],
-		"name": "approveOrganiser",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "_concertID",
-				"type": "uint256"
-			}
-		],
-		"name": "venueApproveConcert",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"name": "ticketsSold",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "getListings",
-		"outputs": [
-			{
-				"components": [
-					{
-						"name": "artist",
-						"type": "address"
-					},
-					{
-						"name": "venue",
-						"type": "address"
-					},
-					{
-						"name": "organiser",
-						"type": "address"
-					},
-					{
-						"name": "artistPayoutPercentage",
-						"type": "uint256"
-					},
-					{
-						"name": "organiserPayoutPercentage",
-						"type": "uint256"
-					},
-					{
-						"name": "venuePayoutPercentage",
-						"type": "uint256"
-					},
-					{
-						"name": "totalTickets",
-						"type": "uint256"
-					},
-					{
-						"name": "ticketInfoURI",
-						"type": "string"
-					},
-					{
-						"name": "preSaleQuantity",
-						"type": "uint256"
-					},
-					{
-						"name": "preSaleTicketPrice",
-						"type": "uint256"
-					},
-					{
-						"name": "generalSaleTicketPrice",
-						"type": "uint256"
-					},
-					{
-						"name": "concertState",
-						"type": "uint256"
-					}
-				],
-				"name": "",
-				"type": "tuple[]"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "organiser",
-				"type": "address"
-			}
-		],
-		"name": "checkOrganiserAddressApproval",
-		"outputs": [
-			{
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"name": "_ticketAddress",
-				"type": "address"
-			},
-			{
-				"name": "_supporterAddress",
-				"type": "address"
-			}
-		],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "constructor"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"name": "concertID",
-				"type": "uint256"
-			},
-			{
-				"indexed": true,
-				"name": "concertState",
-				"type": "uint256"
-			}
-		],
-		"name": "ConcertStatus",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"name": "concertID",
-				"type": "uint256"
-			},
-			{
-				"indexed": true,
-				"name": "supporterNFTID",
-				"type": "uint256"
-			},
-			{
-				"indexed": true,
-				"name": "ticketID",
-				"type": "uint256"
-			}
-		],
-		"name": "TicketPurchase",
-		"type": "event"
-	}
-]"""
-contract_instance = w3.eth.contract(address=address, abi=abi)
+concert_address = os.getenv("CONCERT_CONTRACT_ADDRESS")
+concert_abi = os.getenv("CONCERT_ABI")
+contract_instance = w3.eth.contract(address=concert_address, abi=concert_abi)
 router = APIRouter()
-concert_id = 1
 
 class Concert(BaseModel):
     concert_name: str
@@ -596,6 +31,8 @@ class Concert(BaseModel):
     pre_sale_start_datetime_str: str
     pre_sale_end_datetime_str: str
     general_sale_start_datetime_str: str
+    organiser_address: str
+    organiser_private_key: str
 
 @router.post("/concerts")
 async def create_concert(concert: Concert):  
@@ -676,9 +113,13 @@ async def create_concert(concert: Concert):
     # total_tickets = 100
     # pre_sale_quality = 0
     ticket_info_cid = cid
+    ticket_info_uri = f"ipfs://{ticket_info_cid}"	
     # pre_sale_ticket_price = 0
     # general_sale_ticket_price = 100
     
+
+    concert_id = contract_instance.functions.getListingID().call()
+
     transaction = contract_instance.functions.createConcert(
         artist_address,
         venue_address,
@@ -687,28 +128,27 @@ async def create_concert(concert: Concert):
         venue_payout_percentage,
         total_tickets,
         pre_sale_quality,
-        ticket_info_cid,
+        ticket_info_uri,
         pre_sale_ticket_price,
         general_sale_ticket_price
         ).build_transaction({
-        'from': account,
-        'nonce': w3.eth.get_transaction_count(account),
+        'from': concert.organiser_address,
+        'nonce': w3.eth.get_transaction_count(concert.organiser_address),
         'gas': 2000000,
         'gasPrice': w3.to_wei('10', 'gwei')
     })
     
     
     # # Sign the transaction
-    signed_txn = w3.eth.account.sign_transaction(transaction, private_key=private_key)
+    signed_txn = w3.eth.account.sign_transaction(transaction, private_key=concert.organiser_private_key)
     # # Send the transaction
     tx_hash = w3.eth.send_raw_transaction(signed_txn.raw_transaction)
     # # Wait for the transaction to be mined, and get the transaction receipt
     tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
     print(f"Transaction receipt mined: {dict(tx_receipt)}")
-    global concert_id
-    concert_id += 1
+ 
     return {
-        "concert_id": concert_id-1,
+        "concert_id": concert_id,
 		"cid": cid
 	}
   
