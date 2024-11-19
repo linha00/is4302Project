@@ -192,4 +192,8 @@ contract Concert  {
         return organisersApproval[organiser];
     }
 
+    function getListingID() external view returns (uint256) {
+        return concertID;
+    }
+
 }

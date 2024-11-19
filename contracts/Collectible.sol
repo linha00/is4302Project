@@ -39,6 +39,7 @@ contract Collectible is IERC721, IERC165 {
     // Constructor
     constructor() public {
         owner = msg.sender;
+        tokenId = 1;
     }
 
     modifier isOwner() {
@@ -170,6 +171,10 @@ contract Collectible is IERC721, IERC165 {
         balances[_to] += 1;
         tokenId += 1;
         emit Transfer(address(0), _to, tokenId);
+    }
+
+    function getLatestTokenId() external view returns (uint256) {
+        return tokenId;
     }
 
     
