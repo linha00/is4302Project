@@ -3,9 +3,8 @@ pragma solidity ^0.5.0;
 import {IERC721} from "../interfaces/IERC721.sol";
 import {IERC165} from "../interfaces/IERC165.sol";
 
-contract Ticket is IERC721, IERC165 {
+contract Ticket is  IERC165 {
     
-
     struct Metadata {
         uint256 concertId;
         uint256 ticketPrice;
@@ -15,6 +14,7 @@ contract Ticket is IERC721, IERC165 {
         address artist;
     }
 
+
     bytes4 private constant INTERFACE_ID_ERC721 = 0x80ac58cd;
     
     address public owner;
@@ -23,6 +23,7 @@ contract Ticket is IERC721, IERC165 {
     mapping(address=> mapping (address => bool)) private operatorApprovalsForAll;
     mapping(uint256 => address) private operatorApprovals;
     mapping(uint256 => Metadata) public ticketsMetadata;
+    mapping(address => bool) public approvedMinters;
     // Keep Track of the total number of tickets a user has
     mapping(address => uint256) private balances;
 
@@ -30,11 +31,11 @@ contract Ticket is IERC721, IERC165 {
     mapping(uint256 => bool) public usedTickets;
 
     // Events from IERC721
-    /*
+    
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
     event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
     event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
-    */
+
 
     // Constructor
     constructor() public {
@@ -62,22 +63,13 @@ contract Ticket is IERC721, IERC165 {
         _;
     }
 
-    modifier isNotContract(address _addr) {
-        
-        uint32 size;
-        assembly {
-            size := extcodesize(_addr)
-        }
-        require(size == 0, "Contracts are not allowed");
-        _;
-    }
-
     modifier checkApproval(address _from, address _to, uint256 _tokenId) {
         if(msg.sender != _from) {
             require( 
                 msg.sender == owner || 
                 operatorApprovalsForAll[ticketsMetadata[_tokenId].owner][msg.sender] == true || 
-                operatorApprovals[_tokenId] == msg.sender
+                operatorApprovals[_tokenId] == msg.sender ||
+                approvedMinters[msg.sender]
             , "Caller is not approved to transfer this token");
         }
         _;
@@ -86,6 +78,10 @@ contract Ticket is IERC721, IERC165 {
     modifier tokenExists(uint256 _tokenId) {
         require(ticketsMetadata[_tokenId].owner != address(0), "Token does not exist");
         _;
+    }
+
+    function setApprovedMinter(address _minter) external isOwner {
+        approvedMinters[_minter] = true;
     }
 
     function supportsInterface(bytes4 interfaceId) public view returns (bool) {
@@ -120,22 +116,19 @@ contract Ticket is IERC721, IERC165 {
         operatorApprovals[_tokenId] = address(0); 
     }
 
-    function updateTokenOwner(uint256 _tokenId, address _to) private {
-        ticketsMetadata[_tokenId].previousOwner = ticketsMetadata[_tokenId].owner;
-        ticketsMetadata[_tokenId].owner = _to;
-        balances[ticketsMetadata[_tokenId].previousOwner ] -= 1;
-        balances[_to] += 1;
-    } 
 
     function safeTransferFrom(address _from, address _to, uint256 _tokenId) public 
             tokenExists(_tokenId) 
             isTokenOwner(_tokenId, _from) 
-            isNotContract(_to)
             toCannotBeZero(_to) 
             fromCannotBeZero(_from) 
-            checkApproval(_from, _to, _tokenId) {
+            checkApproval(msg.sender, _to, _tokenId) 
+            {
    
-        updateTokenOwner(_tokenId, _to);
+        ticketsMetadata[_tokenId].previousOwner = _from;
+        ticketsMetadata[_tokenId].owner = _to;
+        balances[_from] -= 1;
+        balances[_to] += 1;
         removeApproval(_tokenId);
         emit Transfer(_from, _to, _tokenId);
     }
@@ -171,13 +164,14 @@ contract Ticket is IERC721, IERC165 {
         return operatorApprovalsForAll[_owner][_operator];
     }
 
-    function mint(address _to, uint256 _concertId, uint256 _ticketPrice, string calldata _ticketURI, address _artist ) external isOwner() returns (uint256) {
+    function mint(address _to, uint256 _concertId, uint256 _ticketPrice, string calldata _ticketURI, address _artist ) external returns (uint256) {
+        require(msg.sender == owner || approvedMinters[msg.sender], "Caller is not the owner or approved");
         ticketsMetadata[ticketId] = Metadata(_concertId, _ticketPrice, _ticketURI, _to, address(0), _artist);
         balances[_to] += 1;
         ticketId += 1;
         emit Transfer(address(0), _to, ticketId);
 
-        return ticketId;
+        return ticketId-1;
     }
 
     function getAttendees(uint256 _concertId) external view returns (address[] memory) {
@@ -195,6 +189,10 @@ contract Ticket is IERC721, IERC165 {
     function useTicket(uint256 _ticketId) external tokenExists(_ticketId) isTokenOwner(_ticketId,tx.origin) {
         require(!usedTickets[ticketId], "Ticket already used");
         usedTickets[ticketId] = true;
+    }
+
+    function getArtist(uint256 _ticketId) external view tokenExists(_ticketId) returns (address) {
+        return ticketsMetadata[_ticketId].artist;
     }
 
 }

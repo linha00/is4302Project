@@ -68,15 +68,6 @@ contract ComposableCollectible is IERC721, IERC165 {
         _;
     }
 
-    modifier isNotContract(address _addr) {
-        uint32 size;
-        assembly {
-            size := extcodesize(_addr)
-        }
-        require(size == 0, "Contracts are not allowed");
-        _;
-    }
-
     // check if sender is the contract owner or owner of collectible or have approval for all 
     modifier checkApproval(address _from, address _to, uint256 _tokenId) {
         if(msg.sender != _from) {
@@ -169,10 +160,9 @@ contract ComposableCollectible is IERC721, IERC165 {
     function safeTransferFrom(address _from, address _to, uint256 _tokenId) public 
             toCannotBeZero(_to) 
             fromCannotBeZero(_from) 
-            isNotContract(_to) 
             tokenExists(_tokenId) 
             isTokenOwner(_tokenId, _from) 
-            checkApproval(_from, _to, _tokenId) {
+            checkApproval(msg.sender, _to, _tokenId) {
         updateTokenOwner(_tokenId, _to);
         removeApproval(_tokenId);
         emit Transfer(_from, _to, _tokenId);

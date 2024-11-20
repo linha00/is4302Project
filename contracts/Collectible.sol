@@ -62,18 +62,6 @@ contract Collectible is IERC721, IERC165 {
         _;
     }
 
-    modifier isNotContract(address _addr) {
-        if(_addr != composableAddress) {
-            return;
-        }
-        uint32 size;
-        assembly {
-            size := extcodesize(_addr)
-        }
-        require(size == 0, "Contracts are not allowed");
-        _;
-    }
-
     // check if sender is the contract owner or owner of collectible or have approval for all 
     modifier checkApproval(address _from, address _to, uint256 _tokenId) {
         if(msg.sender != _from) {
@@ -115,21 +103,21 @@ contract Collectible is IERC721, IERC165 {
         operatorApprovals[_tokenId] = address(0); 
     }
 
-    function updateTokenOwner(uint256 _tokenId, address _to) private {
-        collectiblesMetadata[_tokenId].previousOwner = collectiblesMetadata[_tokenId].owner;
+    function updateTokenOwner(uint256 _tokenId, address _to, address _from) private {
+        collectiblesMetadata[_tokenId].previousOwner = _from;
         collectiblesMetadata[_tokenId].owner = _to;
-        balances[collectiblesMetadata[_tokenId].previousOwner ] -= 1;
+        balances[_from] -= 1;
         balances[_to] += 1;
     }
 
     function safeTransferFrom(address _from, address _to, uint256 _tokenId) public 
             toCannotBeZero(_to) 
             fromCannotBeZero(_from) 
-            isNotContract(_to) 
             tokenExists(_tokenId) 
             isTokenOwner(_tokenId, _from) 
-            checkApproval(_from, _to, _tokenId) {
-        updateTokenOwner(_tokenId, _to);
+            checkApproval(msg.sender, _to, _tokenId) {
+
+        updateTokenOwner(_tokenId, _to, _from);
         removeApproval(_tokenId);
         emit Transfer(_from, _to, _tokenId);
     }
@@ -177,5 +165,8 @@ contract Collectible is IERC721, IERC165 {
         return tokenId;
     }
 
+    function getArtist(uint256 _tokenId) external view tokenExists(_tokenId) returns (address) {
+        return collectiblesMetadata[_tokenId].artist;
+    }
     
 }

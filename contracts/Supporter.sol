@@ -23,6 +23,7 @@ contract Supporter is IERC721, IERC165 {
     mapping(address=> mapping (address => bool)) private operatorApprovalsForAll;
     mapping(uint256 => address) private operatorApprovals;
     mapping(uint256 => Metadata) public supportersMetadata;
+    mapping(address => bool) public approvedMinters;
     // Keep Track of the total number of Token a user has
     mapping(address => uint256) private balances;
 
@@ -58,19 +59,10 @@ contract Supporter is IERC721, IERC165 {
         _;
     }
 
-    modifier isNotContract(address _addr) {
-        
-        uint32 size;
-        assembly {
-            size := extcodesize(_addr)
-        }
-        require(size == 0, "Contracts are not allowed");
-        _;
-    }
 
     modifier checkApproval(address _from, address _to, uint256 _tokenId) {
         if(msg.sender != _from) {
-            require( msg.sender == owner || operatorApprovalsForAll[supportersMetadata[_tokenId].owner][msg.sender] == true || operatorApprovals[_tokenId] == msg.sender, "Caller is not approved to transfer this token");
+            require( msg.sender == owner || operatorApprovalsForAll[supportersMetadata[_tokenId].owner][msg.sender] == true || operatorApprovals[_tokenId] == msg.sender || approvedMinters[msg.sender], "Caller is not approved to transfer this token");
         }
         _;
     }
@@ -84,6 +76,11 @@ contract Supporter is IERC721, IERC165 {
         require(supportersMetadata[_tokenId].transferrable == true, "Token is not transferrable");
         _;
     }
+
+    function setApprovedMinter(address _minter) external isOwner {
+        approvedMinters[_minter] = true;
+    }
+
 
     
     function supportsInterface(bytes4 interfaceId) public view returns (bool) {
@@ -99,21 +96,25 @@ contract Supporter is IERC721, IERC165 {
         return supportersMetadata[_tokenId].owner;
     }
 
+    function getPreviousOwner(uint256 _tokenId) external view tokenExists(_tokenId) returns (address) {
+        return supportersMetadata[_tokenId].previousOwner;
+    }
+
 
     function removeApproval(uint256 _tokenId) private {
         operatorApprovals[_tokenId] = address(0); 
     }
 
-    function updateTokenOwner(uint256 _tokenId, address _to) private {
-        supportersMetadata[_tokenId].previousOwner = supportersMetadata[_tokenId].owner;
+    function updateTokenOwner(uint256 _tokenId, address _to, address _from) private {
+        supportersMetadata[_tokenId].previousOwner = _from;
         supportersMetadata[_tokenId].owner = _to;
-        balances[supportersMetadata[_tokenId].previousOwner ] -= 1;
+        balances[_from] -= 1;
         balances[_to] += 1;
     }
 
 
-    function safeTransferFrom(address _from, address _to, uint256 _tokenId) public isTransferrable(_tokenId) toCannotBeZero(_to) fromCannotBeZero(_from) isNotContract(_to) tokenExists(_tokenId) isTokenOwner(_tokenId, _from) checkApproval(_from, _to, _tokenId) {
-        updateTokenOwner(_tokenId, _to);
+    function safeTransferFrom(address _from, address _to, uint256 _tokenId) public isTransferrable(_tokenId) toCannotBeZero(_to) fromCannotBeZero(_from) tokenExists(_tokenId) isTokenOwner(_tokenId, _from) checkApproval(msg.sender, _to, _tokenId) {
+        updateTokenOwner(_tokenId, _to, _from);
         removeApproval(_tokenId);
         emit Transfer(_from, _to, _tokenId);
     }
@@ -154,7 +155,8 @@ contract Supporter is IERC721, IERC165 {
         supportersMetadata[_tokenId].transferrable = _transferrable;
     }
 
-    function mint(address _to, uint256 _concertId, string calldata _tokenURI, address _artist) external isOwner() returns (uint256) {
+    function mint(address _to, uint256 _concertId, string calldata _tokenURI, address _artist) external  returns (uint256) {
+        require(msg.sender == owner || approvedMinters[msg.sender], "Caller is not the owner or approved");
         supportersMetadata[tokenId] = Metadata(_concertId, _tokenURI, _to, address(0), _artist, false);
         balances[_to] += 1;
         tokenId += 1;
