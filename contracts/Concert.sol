@@ -44,6 +44,8 @@ contract Concert  {
     event ConcertStatus(uint256 indexed concertID, uint256 indexed concertState);
     event TicketPurchase(uint256 indexed concertID, uint256 indexed supporterNFTID , uint256 indexed ticketID);
 
+    event transferNFTToPresaleAttendees(uint256 concertID, uint256[] ticketIDs);
+
     // Constructor
     constructor(Ticket _ticketAddress, Supporter _supporterAddress) public {
         ticketContract = _ticketAddress;
@@ -194,6 +196,21 @@ contract Concert  {
 
     function getListingID() external view returns (uint256) {
         return concertID;
+    }
+
+    function transferNFTToPresaleAttendees(uint256 _concertID, uint256[] calldata _ticketIDs) external{
+        Listing storage listing = Listings[_concertID];
+        require(msg.sender == listing.artist, "Caller is not the artist of the concert");
+
+        for(uint256 i = 0; i < _ticketIDs.length; i++){
+            address attendee = ticketContract.ownerOf(_ticketIDs[i]);
+            require(attendee != address(0), "Invalid ticket owner");
+
+            require(supporterTokenContract.balanceOf(attendee) > 0, "Attendee does not own a supporter token");
+            ticketContract.transferFrom(msg.sender, attendee, _ticketIDs[i]);
+        }
+        emit transferNFTToPresaleAttendees(_concertID, _ticketIDs);
+
     }
 
 }
