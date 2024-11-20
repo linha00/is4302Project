@@ -154,11 +154,13 @@ contract Supporter is IERC721, IERC165 {
         supportersMetadata[_tokenId].transferrable = _transferrable;
     }
 
-    function mint(address _to, uint256 _concertId, string calldata _tokenURI, address _artist) external isOwner() {
+    function mint(address _to, uint256 _concertId, string calldata _tokenURI, address _artist) external isOwner() returns (uint256) {
         supportersMetadata[tokenId] = Metadata(_concertId, _tokenURI, _to, address(0), _artist, false);
         balances[_to] += 1;
         tokenId += 1;
         emit Transfer(address(0), _to, tokenId);
+
+        return tokenId;
     }
 
     

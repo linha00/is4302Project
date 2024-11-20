@@ -125,7 +125,7 @@ contract Ticket is IERC721, IERC165 {
         ticketsMetadata[_tokenId].owner = _to;
         balances[ticketsMetadata[_tokenId].previousOwner ] -= 1;
         balances[_to] += 1;
-    }
+    } 
 
     function safeTransferFrom(address _from, address _to, uint256 _tokenId) public 
             tokenExists(_tokenId) 
@@ -171,11 +171,13 @@ contract Ticket is IERC721, IERC165 {
         return operatorApprovalsForAll[_owner][_operator];
     }
 
-    function mint(address _to, uint256 _concertId, uint256 _ticketPrice, string calldata _ticketURI, address _artist ) external isOwner() {
+    function mint(address _to, uint256 _concertId, uint256 _ticketPrice, string calldata _ticketURI, address _artist ) external isOwner() returns (uint256) {
         ticketsMetadata[ticketId] = Metadata(_concertId, _ticketPrice, _ticketURI, _to, address(0), _artist);
         balances[_to] += 1;
         ticketId += 1;
         emit Transfer(address(0), _to, ticketId);
+
+        return ticketId;
     }
 
     function getAttendees(uint256 _concertId) external view returns (address[] memory) {

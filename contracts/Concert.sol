@@ -202,13 +202,15 @@ contract Concert  {
         if (Listings[_concertID].concertState == uint256(ConcertState.PreSale)) {
             require(msg.value >= Listings[_concertID].preSaleTicketPrice, "Insufficient amount paid for pre sale ticket");
             
-            // Mint ticket
-            ticketContract.mint(msg.sender, _concertID, Listings[_concertID].preSaleTicketPrice, Listings[_concertID].ticketInfoURI, Listings[_concertID].artist);
+            // Mint ticket and transfer to buyer
+            uint256 ticketID = ticketContract.mint(owner, _concertID, Listings[_concertID].preSaleTicketPrice, Listings[_concertID].ticketInfoURI, Listings[_concertID].artist);
+            ticketContract.safeTransferFrom(owner, msg.sender, ticketID);
+            emit TicketPurchase(_concertID, 0 , ticketID);
 
             // Update tickets sold and concert status
             ticketsSold[_concertID]++;
             if (ticketsSold[_concertID] == Listings[_concertID].preSaleQuantity) {
-                Listings[_concertID].concertState = uint256(ConcertState.PreSaleOver);
+                Listings[_concertID].concertState = uint256(ConcertState.GeneralSale);
                 emit ConcertStatus(_concertID, uint256(ConcertState.PreSaleOver));
             }
 
@@ -222,9 +224,15 @@ contract Concert  {
         } else { // General sale
             require(msg.value >= Listings[_concertID].generalSaleTicketPrice, "Insufficient amount paid for general sale ticket");
             
-            // Mint ticket
-            ticketContract.mint(msg.sender, _concertID, Listings[_concertID].generalSaleTicketPrice, Listings[_concertID].ticketInfoURI, Listings[_concertID].artist);
+            // Mint ticket and transfer to buyer
+            uint256 ticketID = ticketContract.mint(owner, _concertID, Listings[_concertID].generalSaleTicketPrice, Listings[_concertID].ticketInfoURI, Listings[_concertID].artist);
+            ticketContract.safeTransferFrom(owner, msg.sender, ticketID);
 
+            // Mint supporter nft and transfer to buyer
+            uint256 supporterNFTID = supporterContract.mint(owner, _concertID, Listings[_concertID].ticketInfoURI, Listings[_concertID].artist);
+            emit TicketPurchase(_concertID, supporterNFTID , ticketID);
+            
+            
             // Update tickets sold and concert status
             ticketsSold[_concertID]++;
             if (ticketsSold[_concertID] == Listings[_concertID].totalTickets) {
@@ -239,6 +247,5 @@ contract Concert  {
                 require(sent, "Failed to Return Change");
             }
         }
-
     }
 }
