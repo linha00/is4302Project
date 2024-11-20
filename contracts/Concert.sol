@@ -196,4 +196,71 @@ contract Concert  {
         return concertID;
     }
 
+    function triggerPayout(uint256 _concertID) external {
+    // Fetch the concert details
+    Listing storage listing = Listings[_concertID];
+
+    // Ensure the concert is in the correct state
+    require(listing.concertState == uint256(ConcertState.Payout), "Concert is not in Payout state");
+
+    // Calculate total funds collected (ticketsSold * ticket price, assuming one price for simplicity)
+    uint256 totalFunds = ticketsSold[_concertID] * listing.generalSaleTicketPrice;
+
+    // Ensure the contract has sufficient balance
+    require(address(this).balance >= totalFunds, "Insufficient contract balance for payouts");
+
+    // Calculate payouts
+    uint256 artistPayout = (totalFunds * listing.artistPayoutPercentage) / 100;
+    uint256 organiserPayout = (totalFunds * listing.organiserPayoutPercentage) / 100;
+    uint256 venuePayout = (totalFunds * listing.venuePayoutPercentage) / 100;
+    uint256 platformPayout = (totalFunds * defaultConcertPlatformPayoutPercentage) / 100;
+
+    // Ensure total percentages add up to 100
+    require(
+        listing.artistPayoutPercentage +
+        listing.organiserPayoutPercentage +
+        listing.venuePayoutPercentage +
+        defaultConcertPlatformPayoutPercentage == 100,
+        "Payout percentages do not add up to 100"
+    );
+
+    // Transfer payouts
+    address payable artist = address(uint160(listing.artist));
+    address payable organiser = address(uint160(listing.organiser));
+    address payable venue = address(uint160(listing.venue));
+    address payable platform = address(uint160(owner)); // Assuming the platform is the contract owner
+
+    artist.transfer(artistPayout);
+    organiser.transfer(organiserPayout);
+    venue.transfer(venuePayout);
+    platform.transfer(platformPayout);
+
+    // Update state
+    listing.concertState = uint256(ConcertState.SoldOut);
+    emit ConcertStatus(_concertID, uint256(ConcertState.SoldOut));
+}
+
+function transferNFTToAttendees(uint256 _concertID, uint256[] calldata _ticketIDs) external {
+    // Ensure the caller is the artist of the concert
+    Listing storage listing = Listings[_concertID];
+    require(msg.sender == listing.artist, "Caller is not the artist of the concert");
+
+    // Ensure the concert is in a state where NFT transfers are allowed
+    require(listing.concertState == uint256(ConcertState.SoldOut), "Concert is not in a SoldOut state");
+
+    // Loop through the list of ticket IDs and transfer the NFT to ticket holders
+    for (uint256 i = 0; i < _ticketIDs.length; i++) {
+        address attendee = ticketContract.ownerOf(_ticketIDs[i]);
+        require(attendee != address(0), "Invalid ticket owner");
+
+        // Transfer the NFT collectible to the attendee
+        ticketContract.transferFrom(msg.sender, attendee, _ticketIDs[i]);
+    }
+
+    emit NFTTransferredToAttendees(_concertID, _ticketIDs);
+}
+
+// Event for tracking NFT transfers
+event NFTTransferredToAttendees(uint256 indexed concertID, uint256[] ticketIDs);
+
 }
