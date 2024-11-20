@@ -16,14 +16,14 @@ contract("Concert", async (accounts) => {
   describe("Test Cases for checkOrganiserAddressApproval:", async () => {
     it("Organiser Address is not Approved", async () => {
       assert.equal(
-        await concertInstance.checkOrganiserAddressApproval(accounts[0]),
+        await concertInstance.checkOrganiserAddressApproval(accounts[8]),
         false
       );
     });
     it("Organiser Address is Approved", async () => {
-      await concertInstance.approveOrganiser(accounts[0]);
+      await concertInstance.approveOrganiser(accounts[8]);
       assert.equal(
-        await concertInstance.checkOrganiserAddressApproval(accounts[0]),
+        await concertInstance.checkOrganiserAddressApproval(accounts[8]),
         true
       );
     });
@@ -65,7 +65,7 @@ contract("Concert", async (accounts) => {
     it("Create Concert", async () => {
       const artist = accounts[2];
       const venue = accounts[1];
-      const organiser = accounts[0];
+      const organiser = accounts[8];
       const artistPayoutPercentage = 40;
       const orgnaiserPayoutPercentage = 40;
       const venuePayoutPercentage = 10;
@@ -172,6 +172,37 @@ contract("Concert", async (accounts) => {
           value: "200000000000000000",
         }),
         "Tickets are not on sale now"
+      );
+
+      //Organiser Update Concert State
+      await concertInstance.organiserUpdateState(1, 12, { from: accounts[8] });
+      const concertState4 = await concertInstance.getConcertState(1);
+      assert.equal(concertState4, 12); // Live
+
+      //Get Artist Balance
+      const artistBalance = await web3.eth.getBalance(accounts[2]);
+      const venueBalance = await web3.eth.getBalance(accounts[1]);
+      const organiserBalance = await web3.eth.getBalance(accounts[8]);
+
+      // //Trigger Payout
+      await concertInstance.triggerPayout(1, { from: accounts[0] });
+
+      //Get Artist Balance
+      const artistBalance1 = await web3.eth.getBalance(accounts[2]);
+      assert.equal(artistBalance1 - artistBalance + "", "120000000000000000");
+
+      // //Get Venue Balance
+      const venueBalance1 = await web3.eth.getBalance(accounts[1]);
+      assert.equal(
+        venueBalance1 - venueBalance,
+        web3.utils.toWei("0.03", "ether")
+      );
+
+      // //Get Organiser Balance
+      const organiserBalance1 = await web3.eth.getBalance(accounts[8]);
+      assert.equal(
+        organiserBalance1 - organiserBalance + "",
+        "120000000000000000"
       );
     });
   });

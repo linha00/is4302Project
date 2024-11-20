@@ -4,7 +4,52 @@ pragma experimental ABIEncoderV2;
 import "./Supporter.sol";
 import "./Ticket.sol";
 
+library SafeMath {
+
+  /**
+  * @dev Multiplies two numbers, throws on overflow.
+  */
+  function mul(uint256 a, uint256 b) internal pure returns (uint256 c) {
+    if (a == 0) {
+      return 0;
+    }
+    c = a * b;
+    assert(c / a == b);
+    return c;
+  }
+
+  /**
+  * @dev Integer division of two numbers, truncating the quotient.
+  */
+  function div(uint256 a, uint256 b) internal pure returns (uint256) {
+    // assert(b > 0); // Solidity automatically throws when dividing by 0
+    // uint256 c = a / b;
+    // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+    return a / b;
+  }
+
+  /**
+  * @dev Subtracts two numbers, throws on overflow (i.e. if subtrahend is greater than minuend).
+  */
+  function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+    assert(b <= a);
+    return a - b;
+  }
+
+  /**
+  * @dev Adds two numbers, throws on overflow.
+  */
+  function add(uint256 a, uint256 b) internal pure returns (uint256 c) {
+    c = a + b;
+    assert(c >= a);
+    return c;
+  }
+}
+
 contract Concert  {
+
+    using SafeMath for uint256;
+
     // Struct for Concert Listing
     struct Listing {
         address artist;
@@ -26,11 +71,12 @@ contract Concert  {
     mapping(address => bool) public venuesApproval;
     mapping(address => bool) public artistsApproval;
     mapping(uint256 => uint256) public ticketsSold;
+    mapping(uint256 => uint256) public preSaleticketsSold;
     mapping(uint256 => ConcertState) public concertState;
 
 
     // Enum for Concert State
-    enum ConcertState {  PreSale, PreSaleOver, GeneralSale, SoldOut, Cancelled, Payout, Created,  PendingArtistApproval, ArtistApproved, PendingVenueApproval, VenueApproved, OrganiserApproved }
+    enum ConcertState {  PreSale, PreSaleOver, GeneralSale, SoldOut, Cancelled, Payout, Created,  PendingArtistApproval, ArtistApproved, PendingVenueApproval, VenueApproved, OrganiserApproved, Live }
 
     uint256 public defaultConcertPlatformPayoutPercentage;
     uint256 public defaultTicketPlatformFeePercentage;
@@ -72,6 +118,7 @@ contract Concert  {
         _;
     }
 
+
     // Approve Organiser
     function approveOrganiser(address _organiser) external onlyOwner {
         organisersApproval[_organiser] = true;
@@ -95,6 +142,10 @@ contract Concert  {
         emit ConcertStatus(_concertId, ConcertState.VenueApproved);
     }
 
+    function selfdestructContract() external onlyOwner() {
+        selfdestruct(msg.sender);
+    }
+
     // Function to create a new concert listing
     function createConcert(
         address _artist,
@@ -112,11 +163,11 @@ contract Concert  {
         //Error Checking
 
         //Payout Check
-        require(_artistPayoutPercentage >= 0, "Artist Payout Percentage must be greater than or equal to 0");
+        require(_artistPayoutPercentage > 0, "Artist Payout Percentage must be greater than or equal to 0");
         require(_artistPayoutPercentage <= 100, "Artist Payout Percentage must be less than or equal to 100");
-        require(_organiserPayoutPercentage >= 0, "Organiser Payout Percentage must be greater than or equal to 0");
+        require(_organiserPayoutPercentage > 0, "Organiser Payout Percentage must be greater than or equal to 0");
         require(_organiserPayoutPercentage <= 100, "Organiser Payout Percentage must be less than or equal to 100");
-        require(_venuePayoutPercentage >= 0, "Venue Payout Percentage must be greater than or equal to 0");
+        require(_venuePayoutPercentage > 0, "Venue Payout Percentage must be greater than or equal to 0");
         require(_venuePayoutPercentage <= 100, "Venue Payout Percentage must be less than or equal to 100");
         require(_artistPayoutPercentage + _organiserPayoutPercentage + _venuePayoutPercentage + defaultConcertPlatformPayoutPercentage == 100, "Total Payout Percentage must be equal to 100");
 
@@ -201,6 +252,14 @@ contract Concert  {
         return organisersApproval[organiser];
     }
 
+    function organiserUpdateState(uint256 _concertID, uint256 _newState) external onlyApprovedOrganiser() {
+        require(concertState[_concertID]==ConcertState.PreSale || concertState[_concertID]==ConcertState.PreSaleOver || concertState[_concertID]==ConcertState.GeneralSale|| concertState[_concertID]==ConcertState.SoldOut, "Invalid Concert State");
+        require(_newState == uint256(ConcertState.Cancelled) ||  _newState == uint256(ConcertState.Live), "Invalid Concert State");
+        concertState[_concertID] = ConcertState(_newState);
+        emit ConcertStatus(_concertID, ConcertState(_newState));
+    }
+
+
     function buyTicket(uint256 _concertID, string calldata ticketURI, string calldata supporterURI) external payable concertExists(_concertID) {
         require(concertState[_concertID] == ConcertState.PreSale || concertState[_concertID] == ConcertState.GeneralSale, "Tickets are not on sale now");
         //Pre sale
@@ -215,8 +274,8 @@ contract Concert  {
             uint256 supporterNFTID = supporterContract.mint(msg.sender, _concertID, supporterURI, Listings[_concertID].artist);
             
             // Update tickets sold and concert status
-            ticketsSold[_concertID]++;
-            if (ticketsSold[_concertID] == Listings[_concertID].preSaleQuantity) {
+            preSaleticketsSold[_concertID]++;
+            if (preSaleticketsSold[_concertID] == Listings[_concertID].preSaleQuantity) {
                 concertState[_concertID] = ConcertState.GeneralSale;
                 emit ConcertStatus(_concertID, ConcertState.PreSaleOver);
             }
@@ -240,7 +299,7 @@ contract Concert  {
             
             // Update tickets sold and concert status
             ticketsSold[_concertID]++;
-            if (ticketsSold[_concertID] == Listings[_concertID].totalTickets) {
+            if (ticketsSold[_concertID] + preSaleticketsSold[_concertID] == Listings[_concertID].totalTickets) {
                 concertState[_concertID] = ConcertState.SoldOut;
                 emit ConcertStatus(_concertID, ConcertState.SoldOut);
             }
@@ -252,7 +311,7 @@ contract Concert  {
                 require(sent, "Failed to Return Change");
             }
             // Pay the Contract
-            balances += Listings[_concertID].preSaleTicketPrice;
+            balances += Listings[_concertID].generalSaleTicketPrice;
             emit TicketPurchase(_concertID, 0 , ticketID);
         }
     }
@@ -261,71 +320,74 @@ contract Concert  {
         return concertID;
     }
 
-    function triggerPayout(uint256 _concertID) external {
-    // Fetch the concert details
-    Listing storage listing = Listings[_concertID];
+    function triggerPayout(uint256 _concertID) external onlyOwner() {
+        // Fetch the concert details
+        Listing storage listing = Listings[_concertID];
 
-    // Ensure the concert is in the correct state
-    require(listing.concertState == uint256(ConcertState.Payout), "Concert is not in Payout state");
+        // Ensure the concert is in the correct state
+        require(concertState[_concertID] == ConcertState.Live , "Concert is not in Correct state");
 
-    // Calculate total funds collected (ticketsSold * ticket price, assuming one price for simplicity)
-    uint256 totalFunds = ticketsSold[_concertID] * listing.generalSaleTicketPrice;
+        // Calculate total funds collected (ticketsSold * ticket price, assuming one price for simplicity)
+        uint256 totalFunds = (ticketsSold[_concertID] * listing.generalSaleTicketPrice) + (preSaleticketsSold[_concertID] * listing.preSaleTicketPrice);
 
-    // Ensure the contract has sufficient balance
-    require(address(this).balance >= totalFunds, "Insufficient contract balance for payouts");
+        // Ensure the contract has sufficient balance
+        require(balances >= totalFunds, "Insufficient contract balance for payouts");
 
-    // Calculate payouts
-    uint256 artistPayout = (totalFunds * listing.artistPayoutPercentage) / 100;
-    uint256 organiserPayout = (totalFunds * listing.organiserPayoutPercentage) / 100;
-    uint256 venuePayout = (totalFunds * listing.venuePayoutPercentage) / 100;
-    uint256 platformPayout = (totalFunds * defaultConcertPlatformPayoutPercentage) / 100;
 
-    // Ensure total percentages add up to 100
-    require(
-        listing.artistPayoutPercentage +
-        listing.organiserPayoutPercentage +
-        listing.venuePayoutPercentage +
-        defaultConcertPlatformPayoutPercentage == 100,
-        "Payout percentages do not add up to 100"
-    );
+        // Ensure total percentages add up to 100
+        require(
+            listing.artistPayoutPercentage +
+            listing.organiserPayoutPercentage +
+            listing.venuePayoutPercentage +
+            defaultConcertPlatformPayoutPercentage == 100,
+            "Payout percentages do not add up to 100"
+        );
 
-    // Transfer payouts
-    address payable artist = address(uint160(listing.artist));
-    address payable organiser = address(uint160(listing.organiser));
-    address payable venue = address(uint160(listing.venue));
-    address payable platform = address(uint160(owner)); // Assuming the platform is the contract owner
+        // Calculate payouts for Live Concert      
+        uint256 artistPayout = (totalFunds.mul(listing.artistPayoutPercentage)).div(100);
+        uint256 organiserPayout = (totalFunds.mul(listing.organiserPayoutPercentage)).div(100);
+        uint256 venuePayout = (totalFunds.mul(listing.venuePayoutPercentage)).div(100);
 
-    artist.transfer(artistPayout);
-    organiser.transfer(organiserPayout);
-    venue.transfer(venuePayout);
-    platform.transfer(platformPayout);
-
-    // Update state
-    listing.concertState = uint256(ConcertState.SoldOut);
-    emit ConcertStatus(_concertID, uint256(ConcertState.SoldOut));
-}
-
-function transferNFTToAttendees(uint256 _concertID, uint256[] calldata _ticketIDs) external {
-    // Ensure the caller is the artist of the concert
-    Listing storage listing = Listings[_concertID];
-    require(msg.sender == listing.artist, "Caller is not the artist of the concert");
-
-    // Ensure the concert is in a state where NFT transfers are allowed
-    require(listing.concertState == uint256(ConcertState.SoldOut), "Concert is not in a SoldOut state");
-
-    // Loop through the list of ticket IDs and transfer the NFT to ticket holders
-    for (uint256 i = 0; i < _ticketIDs.length; i++) {
-        address attendee = ticketContract.ownerOf(_ticketIDs[i]);
-        require(attendee != address(0), "Invalid ticket owner");
-
-        // Transfer the NFT collectible to the attendee
-        ticketContract.transferFrom(msg.sender, attendee, _ticketIDs[i]);
+        // Transfer funds to artist
+        (bool sentArtist, ) = listing.artist.call.value(artistPayout)("");
+        balances -= artistPayout;
+        require(sentArtist, "Failed to transfer funds to artist");
+        // Transfer funds to organiser
+        (bool sentOrganiser, ) = listing.organiser.call.value(organiserPayout)("");
+        balances -= organiserPayout;
+        require(sentOrganiser, "Failed to transfer funds to organiser");
+        // Transfer funds to venue
+        (bool sentVenue, ) = listing.venue.call.value(venuePayout)("");
+        balances -= venuePayout;
+        require(sentVenue, "Failed to transfer funds to venue");
+        
+        require(balances > 0,"Contract balance is zero");
+        // Update state
+        concertState[_concertID] = ConcertState.Payout;
+        emit ConcertStatus(_concertID, ConcertState.Payout);
     }
 
-    emit NFTTransferredToAttendees(_concertID, _ticketIDs);
-}
+    // function transferNFTToAttendees(uint256 _concertID, uint256[] calldata _ticketIDs) external {
+    //     // Ensure the caller is the artist of the concert
+    //     Listing storage listing = Listings[_concertID];
+    //     require(msg.sender == listing.artist, "Caller is not the artist of the concert");
 
-// Event for tracking NFT transfers
-event NFTTransferredToAttendees(uint256 indexed concertID, uint256[] ticketIDs);
+    //     // Ensure the concert is in a state where NFT transfers are allowed
+    //     require(listing.concertState == uint256(ConcertState.SoldOut), "Concert is not in a SoldOut state");
+
+    //     // Loop through the list of ticket IDs and transfer the NFT to ticket holders
+    //     for (uint256 i = 0; i < _ticketIDs.length; i++) {
+    //         address attendee = ticketContract.ownerOf(_ticketIDs[i]);
+    //         require(attendee != address(0), "Invalid ticket owner");
+
+    //         // Transfer the NFT collectible to the attendee
+    //         ticketContract.transferFrom(msg.sender, attendee, _ticketIDs[i]);
+    //     }
+
+    //     emit NFTTransferredToAttendees(_concertID, _ticketIDs);
+    // }
+
+    // // Event for tracking NFT transfers
+    // event NFTTransferredToAttendees(uint256 indexed concertID, uint256[] ticketIDs);
 
 }

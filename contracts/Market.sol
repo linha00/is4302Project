@@ -52,6 +52,11 @@ contract Market {
         artistRoyaltyFee = 10000000000000000;
     }
 
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can call this function");
+        _;
+    }   
+
     modifier isValidListing(uint256 _listingId) {
         require(Listings[_listingId].listingPrice != 0, "Listing does not exist");
         _;
@@ -71,6 +76,10 @@ contract Market {
 
     function testCalculation(uint256 _listingPrice) public view returns (uint256) {
         return (_listingPrice - platformFee - artistRoyaltyFee);
+    }
+
+    function selfdestructContract() external onlyOwner() {
+        selfdestruct(msg.sender);
     }
 
     // modifiers
