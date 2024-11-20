@@ -128,8 +128,6 @@ contract Concert  {
             uint256(ConcertState.PendingVenueApproval)
         );
 
-
-
         // Record Concert Status
         emit ConcertStatus(concertID, uint256(ConcertState.OrganiserApproved));
         // Concert ID Increment
@@ -248,4 +246,9 @@ contract Concert  {
             }
         }
     }
+
+    function getListingID() external view returns (uint256) {
+        return concertID;
+    }
+
 }

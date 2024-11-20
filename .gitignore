@@ -134,3 +134,7 @@ contracts/artifacts
 .deps
 
 build
+
+.DS_Store
+temp/
+__pycache__

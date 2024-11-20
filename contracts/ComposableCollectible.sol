@@ -2,30 +2,32 @@ pragma solidity ^0.5.0;
 
 import {IERC721} from "../interfaces/IERC721.sol";
 import {IERC165} from "../interfaces/IERC165.sol";
+import {Collectible} from "./Collectible.sol";
 
-contract Collectible is IERC721, IERC165 {
+contract ComposableCollectible is IERC721, IERC165 {
     
     struct Metadata {
-        string tokenURI;
         address owner;
         address previousOwner;
         address artist;
-        bool isComposable;
+        uint256[] composableTokens;
     }
     
     bytes4 private constant INTERFACE_ID_ERC721 = 0x80ac58cd;
 
-    address public composableAddress;
+    Collectible public collectibleContract;
+
     address public owner;
     
     uint256 public tokenId;
     
-
-    mapping(address=> mapping (address => bool)) private operatorApprovalsForAll;
+    mapping(uint256 => uint256 ) public tokenIdToComposableIndex;
+    mapping(uint256 => uint256) public tokenIdToComposableTokenId;
+    mapping(address => mapping (address => bool)) private operatorApprovalsForAll;
     mapping(uint256 => address) private operatorApprovals;
 
-    // storage of collectibles
-    mapping(uint256 => Metadata) public collectiblesMetadata;
+    // storage of ComposableCollectibles
+    mapping(uint256 => Metadata) public composableCollectiblesMetadata;
     // Keep Track of the total number of tokens a user has
     mapping(address => uint256) private balances;
 
@@ -39,7 +41,6 @@ contract Collectible is IERC721, IERC165 {
     // Constructor
     constructor() public {
         owner = msg.sender;
-        tokenId = 1;
     }
 
     modifier isOwner() {
@@ -58,14 +59,16 @@ contract Collectible is IERC721, IERC165 {
     }
 
     modifier isTokenOwner(uint256 _tokenId, address _owner) {
-        require(collectiblesMetadata[_tokenId].owner == _owner, "Not the owner of the token");
+        require(composableCollectiblesMetadata[_tokenId].owner == _owner, "Not the owner of the token");
+        _;
+    }
+
+    modifier isRootOwner(uint256 _tokenId, address _owner) {
+        require(composableCollectiblesMetadata[tokenIdToComposableTokenId[_tokenId]].owner == _owner , "Token is not the root Owner");
         _;
     }
 
     modifier isNotContract(address _addr) {
-        if(_addr != composableAddress) {
-            return;
-        }
         uint32 size;
         assembly {
             size := extcodesize(_addr)
@@ -79,7 +82,7 @@ contract Collectible is IERC721, IERC165 {
         if(msg.sender != _from) {
             require( 
                 msg.sender == owner || 
-                operatorApprovalsForAll[collectiblesMetadata[_tokenId].owner][msg.sender] == true || 
+                operatorApprovalsForAll[composableCollectiblesMetadata[_tokenId].owner][msg.sender] == true || 
                 operatorApprovals[_tokenId] == msg.sender
             , "Caller is not approved to transfer this token");
         }
@@ -87,13 +90,58 @@ contract Collectible is IERC721, IERC165 {
     }
 
     modifier tokenExists(uint256 _tokenId) {
-        require(collectiblesMetadata[_tokenId].owner != address(0), "Token does not exist");
+        require(composableCollectiblesMetadata[_tokenId].owner != address(0), "Token does not exist");
         _;
     }
 
-    function setComposableAddress(address _composableAddress) external isOwner() {
-        composableAddress = _composableAddress;
+    modifier isCollectibleContractAddressSet() {
+        require(address(collectibleContract) != address(0), "Collectible contract address is not set");
+        _;
     }
+
+    function setCollectibleContract(address _collectibleAddress) external isOwner() {
+        collectibleContract = Collectible(_collectibleAddress);
+    }
+
+    function parentOf(uint256 _collectibleTokenId) external view returns (uint256) {
+        return tokenIdToComposableTokenId[_collectibleTokenId];
+    }
+
+    // Add to form Composable
+    function transferToParent(uint256 _collectibleTokenId, uint256 _parentTokenId) external isCollectibleContractAddressSet() tokenExists(_parentTokenId) {
+        require(collectibleContract.getPreviousOwner(_collectibleTokenId) == tx.origin, "Caller is not the owner of the token");
+        require(collectibleContract.ownerOf(_collectibleTokenId) == address(this), "Token is not owned by the contract");  
+        require(tokenIdToComposableTokenId[_collectibleTokenId] > 0, "Token is already a child");
+
+        //Set Index
+        tokenIdToComposableIndex[_collectibleTokenId] = composableCollectiblesMetadata[_parentTokenId].composableTokens.length + 1; // Because empty element returns 0 too
+        //Set Parent
+        tokenIdToComposableTokenId[_collectibleTokenId] = _parentTokenId;
+        composableCollectiblesMetadata[_parentTokenId].composableTokens.push(_collectibleTokenId);
+    }   
+
+    // Remove from Composable
+    function transferFromParent(uint256 _collectibleTokenId) external isCollectibleContractAddressSet() isRootOwner(_collectibleTokenId, tx.origin) {
+        
+        uint256 _parentTokenId = tokenIdToComposableTokenId[_collectibleTokenId];
+        uint256 _index = tokenIdToComposableIndex[_collectibleTokenId]-1;
+  
+        //Remove from Parent
+        delete tokenIdToComposableIndex[_collectibleTokenId];
+        delete tokenIdToComposableTokenId[_collectibleTokenId];
+        
+        // Overwrite the element to be deleted with the last element
+        uint256 lastIndex = composableCollectiblesMetadata[_parentTokenId].composableTokens.length - 1;
+        if (_index != lastIndex) {
+            // Move the last element to the index being removed
+            uint256 lastToken = composableCollectiblesMetadata[_parentTokenId].composableTokens[lastIndex];
+            composableCollectiblesMetadata[_parentTokenId].composableTokens[_index] = lastToken;
+            tokenIdToComposableIndex[lastToken] = _index;
+        }
+        // Remove the last element
+        composableCollectiblesMetadata[_parentTokenId].composableTokens.pop();
+    }
+
 
     function supportsInterface(bytes4 interfaceId) public view returns (bool) {
         return interfaceId == INTERFACE_ID_ERC721;
@@ -104,11 +152,7 @@ contract Collectible is IERC721, IERC165 {
     }
 
     function ownerOf(uint256 _tokenId) external view tokenExists(_tokenId) returns (address) {
-        return collectiblesMetadata[_tokenId].owner;
-    }
-
-    function getPreviousOwner(uint256 _tokenId) external view tokenExists(_tokenId) returns (address) {
-        return collectiblesMetadata[_tokenId].previousOwner;
+        return composableCollectiblesMetadata[_tokenId].owner;
     }
 
     function removeApproval(uint256 _tokenId) private {
@@ -116,9 +160,9 @@ contract Collectible is IERC721, IERC165 {
     }
 
     function updateTokenOwner(uint256 _tokenId, address _to) private {
-        collectiblesMetadata[_tokenId].previousOwner = collectiblesMetadata[_tokenId].owner;
-        collectiblesMetadata[_tokenId].owner = _to;
-        balances[collectiblesMetadata[_tokenId].previousOwner ] -= 1;
+        composableCollectiblesMetadata[_tokenId].previousOwner = composableCollectiblesMetadata[_tokenId].owner;
+        composableCollectiblesMetadata[_tokenId].owner = _to;
+        balances[composableCollectiblesMetadata[_tokenId].previousOwner ] -= 1;
         balances[_to] += 1;
     }
 
@@ -145,7 +189,7 @@ contract Collectible is IERC721, IERC165 {
 
     function approve(address _approved, uint256 _tokenId) external tokenExists(_tokenId) {
         //The caller must own the token or be an approved operator.
-        require (msg.sender == owner || operatorApprovalsForAll[collectiblesMetadata[_tokenId].owner][msg.sender] == true, "Caller is not approved to approve this token"); 
+        require (msg.sender == owner || operatorApprovalsForAll[composableCollectiblesMetadata[_tokenId].owner][msg.sender] == true, "Caller is not approved to approve this token"); 
         operatorApprovals[_tokenId] = _approved;
         emit Approval(msg.sender, _approved, _tokenId);
     }
@@ -166,15 +210,11 @@ contract Collectible is IERC721, IERC165 {
     }
 
 
-    function mint(address _to, string calldata _tokenURI, address _artist, bool _isComposable) external isOwner() {
-        collectiblesMetadata[tokenId] = Metadata(_tokenURI, _to, address(0), _artist, _isComposable);
+    function mint(address _to, address _artist) external isOwner() {
+        composableCollectiblesMetadata[tokenId] = Metadata( _to, address(0), _artist, new uint256[](0));
         balances[_to] += 1;
         tokenId += 1;
         emit Transfer(address(0), _to, tokenId);
-    }
-
-    function getLatestTokenId() external view returns (uint256) {
-        return tokenId;
     }
 
     
