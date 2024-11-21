@@ -141,6 +141,17 @@ contract Supporter is IERC721, IERC165 {
         emit ApprovalForAll(owner, _operator, _approved);
     }
 
+    function getSuppoterForConcert(uint256 _concertId) external view returns (address[] memory) {
+        address[] memory supporters = new address[](tokenId);
+        uint256 count = 0;
+        for(uint256 i = 0; i < tokenId; i++) {
+            if(supportersMetadata[i].concertId == _concertId) {
+                supporters[i] = supportersMetadata[i].owner;
+            }
+        }
+        return supporters;
+    }
+
     //Returns the Account approved for TokenId
     function getApproved(uint256 _tokenId) external view tokenExists(_tokenId) returns (address) {
         return operatorApprovals[_tokenId];

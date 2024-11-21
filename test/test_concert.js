@@ -204,6 +204,17 @@ contract("Concert", async (accounts) => {
         organiserBalance1 - organiserBalance + "",
         "120000000000000000"
       );
+
+      //Get Supporter of Concert
+      const supporters = await supporterInstance.getSuppoterForConcert(1);
+      assert.equal(supporters.length, 1);
+      assert.equal(supporters[0], accounts[5]);
+
+      //Get Attendees of Concert
+      const attendees = await ticketInstance.getAttendees(1);
+      assert.equal(attendees.length, 2);
+      assert.equal(attendees[0], accounts[5]);
+      assert.equal(attendees[1], accounts[6]);
     });
   });
 });

@@ -221,7 +221,6 @@ contract Concert  {
         return concertState[_concertID];
     }
 
-
     // Artist approve Concert
     function updateArtistStateApproval(uint256 _concertID) external {
         
@@ -366,6 +365,8 @@ contract Concert  {
         concertState[_concertID] = ConcertState.Payout;
         emit ConcertStatus(_concertID, ConcertState.Payout);
     }
+
+
 
     // function transferNFTToAttendees(uint256 _concertID, uint256[] calldata _ticketIDs) external {
     //     // Ensure the caller is the artist of the concert
