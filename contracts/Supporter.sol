@@ -143,7 +143,6 @@ contract Supporter is IERC721, IERC165 {
 
     function getSuppoterForConcert(uint256 _concertId) external view returns (address[] memory) {
         address[] memory supporters = new address[](tokenId);
-        uint256 count = 0;
         for(uint256 i = 0; i < tokenId; i++) {
             if(supportersMetadata[i].concertId == _concertId) {
                 supporters[i] = supportersMetadata[i].owner;

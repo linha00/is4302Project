@@ -3,6 +3,7 @@ const Supporter = artifacts.require("Supporter");
 const Concert = artifacts.require("Concert");
 const Collectible = artifacts.require("Collectible");
 const Market = artifacts.require("Market");
+const ComposableCollectible = artifacts.require("ComposableCollectible");
 
 module.exports = async (deployer) => {
   // Deploy the Ticket contract
@@ -30,4 +31,7 @@ module.exports = async (deployer) => {
     collectibleInstance.address,
     ticketInstance.address
   );
+
+  await deployer.deploy(ComposableCollectible);
+  const composableCollectibleInstance = await ComposableCollectible.deployed();
 };

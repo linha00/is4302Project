@@ -41,6 +41,7 @@ contract ComposableCollectible is IERC721, IERC165 {
     // Constructor
     constructor() public {
         owner = msg.sender;
+        tokenId = 1;
     }
 
     modifier isOwner() {
@@ -102,7 +103,7 @@ contract ComposableCollectible is IERC721, IERC165 {
     function transferToParent(uint256 _collectibleTokenId, uint256 _parentTokenId) external isCollectibleContractAddressSet() tokenExists(_parentTokenId) {
         require(collectibleContract.getPreviousOwner(_collectibleTokenId) == tx.origin, "Caller is not the owner of the token");
         require(collectibleContract.ownerOf(_collectibleTokenId) == address(this), "Token is not owned by the contract");  
-        require(tokenIdToComposableTokenId[_collectibleTokenId] > 0, "Token is already a child");
+        require(tokenIdToComposableTokenId[_collectibleTokenId] == 0, "Token is already a child");
 
         //Set Index
         tokenIdToComposableIndex[_collectibleTokenId] = composableCollectiblesMetadata[_parentTokenId].composableTokens.length + 1; // Because empty element returns 0 too
