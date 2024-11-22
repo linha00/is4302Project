@@ -5,6 +5,7 @@ import {IERC165} from "../interfaces/IERC165.sol";
 
 contract Collectible is IERC721, IERC165 {
     
+    // Struct for collectiblesMetadata
     struct Metadata {
         string tokenURI;
         address owner;
@@ -13,28 +14,28 @@ contract Collectible is IERC721, IERC165 {
         bool isComposable;
     }
     
-    bytes4 private constant INTERFACE_ID_ERC721 = 0x80ac58cd;
 
+    // Contract-level state variables
+    bytes4 private constant INTERFACE_ID_ERC721 = 0x80ac58cd;
     address public composableAddress;
     address public owner;
-    
     uint256 public tokenId;
     
 
+    // Storage Memory
     mapping(address=> mapping (address => bool)) private operatorApprovalsForAll;
     mapping(uint256 => address) private operatorApprovals;
-
     // storage of collectibles
     mapping(uint256 => Metadata) public collectiblesMetadata;
     // Keep Track of the total number of tokens a user has
     mapping(address => uint256) private balances;
 
+
     // Events from IERC721
-    /*
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
     event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
     event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
-    */
+
 
     // Constructor
     constructor() public {
@@ -42,21 +43,26 @@ contract Collectible is IERC721, IERC165 {
         tokenId = 1;
     }
 
+
+    // modifiers
     modifier isOwner() {
         require(msg.sender == owner, "Caller is not the owner");
         _;
     }
 
+    // receiver cannot be null or 0
     modifier toCannotBeZero(address _to) {
         require(_to != address(0), "Invalid address");
         _;
     }
 
+    // sender cannot be null or 0
     modifier fromCannotBeZero(address _from) {
         require(_from != address(0), "Invalid address");
         _;
     }
 
+    // caller is the owner
     modifier isTokenOwner(uint256 _tokenId, address _owner) {
         require(collectiblesMetadata[_tokenId].owner == _owner, "Not the owner of the token");
         _;
@@ -124,11 +130,13 @@ contract Collectible is IERC721, IERC165 {
         emit Transfer(_from, _to, _tokenId);
     }
 
+    // prevent extra data from being sent
     function safeTransferFrom(address _from , address _to, uint256 _tokenId, bytes calldata _data) external {
         require(_data.length == 0, "Data must be empty");
         safeTransferFrom(_from, _to, _tokenId);
     }
 
+    // delgates extra data to empty bytes
     function transferFrom(address _from, address _to, uint256 _tokenId) external {
         safeTransferFrom(_from, _to, _tokenId);
     }

@@ -5,6 +5,7 @@ import {IERC165} from "../interfaces/IERC165.sol";
 
 contract Ticket is  IERC165 {
     
+    // Struct for ticketsMetadata
     struct Metadata {
         uint256 concertId;
         uint256 ticketPrice;
@@ -14,24 +15,26 @@ contract Ticket is  IERC165 {
         address artist;
     }
 
-
-    bytes4 private constant INTERFACE_ID_ERC721 = 0x80ac58cd;
-    
+    // Contract-level state variables
+    bytes4 private constant INTERFACE_ID_ERC721 = 0x80ac58cd;    
     address public owner;
-    
     uint256 public ticketId;
+
+
+    // Storage Memory
     mapping(address=> mapping (address => bool)) private operatorApprovalsForAll;
     mapping(uint256 => address) private operatorApprovals;
+    // stores the metadata of tickets 
     mapping(uint256 => Metadata) public ticketsMetadata;
+    // keep track of the approved minters that are allowed to mint new tickets
     mapping(address => bool) public approvedMinters;
-    // Keep Track of the total number of tickets a user has
+    // Keep track of the total number of tickets a user has
     mapping(address => uint256) private balances;
-
     // Keep track of the ticket used
     mapping(uint256 => bool) public usedTickets;
 
+
     // Events from IERC721
-    
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
     event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
     event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
@@ -42,27 +45,32 @@ contract Ticket is  IERC165 {
         owner = msg.sender;
     }
 
+
     // modifiers
     modifier isOwner() {
         require(msg.sender == owner, "Caller is not the owner");
         _;
     }
 
+    // receiver cannot be null or 0
     modifier toCannotBeZero(address _to) {
         require(_to != address(0), "Invalid address");
         _;
     }
 
+    // sender cannot be null or 0
     modifier fromCannotBeZero(address _from) {
         require(_from != address(0), "Invalid address");
         _;
     }
 
+    // caller is the owner
     modifier isTokenOwner(uint256 _tokenId, address _owner) {
         require(ticketsMetadata[_tokenId].owner == _owner, "Not the owner of the token");
         _;
     }
 
+    // check if the sender is an approved operator for the token
     modifier checkApproval(address _from, address _to, uint256 _tokenId) {
         if(msg.sender != _from) {
             require( 
@@ -80,6 +88,7 @@ contract Ticket is  IERC165 {
         _;
     }
 
+    // set the approved minter for this contract to create new tokens
     function setApprovedMinter(address _minter) external isOwner {
         approvedMinters[_minter] = true;
     }
@@ -116,7 +125,6 @@ contract Ticket is  IERC165 {
         operatorApprovals[_tokenId] = address(0); 
     }
 
-
     function safeTransferFrom(address _from, address _to, uint256 _tokenId) public 
             tokenExists(_tokenId) 
             isTokenOwner(_tokenId, _from) 
@@ -133,15 +141,18 @@ contract Ticket is  IERC165 {
         emit Transfer(_from, _to, _tokenId);
     }
 
+    // prevent extra data from being sent
     function safeTransferFrom(address _from , address _to, uint256 _tokenId, bytes calldata _data) external {
         require(_data.length == 0, "Data must be empty");
         safeTransferFrom(_from, _to, _tokenId);
     }
 
+    // delgates extra data to empty bytes
     function transferFrom(address _from, address _to, uint256 _tokenId) external {
         safeTransferFrom(_from, _to, _tokenId);
     }
 
+    // approve the transcation
     function approve(address _approved, uint256 _tokenId) external tokenExists(_tokenId) {
         //The caller must own the token or be an approved operator.
         require (msg.sender == owner || operatorApprovalsForAll[ticketsMetadata[_tokenId].owner][msg.sender] == true, "Caller is not approved to approve this token"); 
@@ -149,6 +160,7 @@ contract Ticket is  IERC165 {
         emit Approval(msg.sender, _approved, _tokenId);
     }
 
+    // set approval for all 
     function setApprovalForAll(address _operator, bool _approved) external{
         require(_operator != address(0), "Operator address cannot be zero"); 
         operatorApprovalsForAll[msg.sender][_operator] = _approved;
@@ -164,6 +176,7 @@ contract Ticket is  IERC165 {
         return operatorApprovalsForAll[_owner][_operator];
     }
 
+    // mint a new ticket
     function mint(address _to, uint256 _concertId, uint256 _ticketPrice, string calldata _ticketURI, address _artist ) external returns (uint256) {
         require(msg.sender == owner || approvedMinters[msg.sender], "Caller is not the owner or approved");
         ticketsMetadata[ticketId] = Metadata(_concertId, _ticketPrice, _ticketURI, _to, address(0), _artist);
@@ -174,6 +187,7 @@ contract Ticket is  IERC165 {
         return ticketId-1;
     }
 
+    // get the total number of attendees for a concert
     function getAttendees(uint256 _concertId) external view returns (address[] memory) {
         address[] memory attendees = new address[](ticketId);
         uint256 count = 0;

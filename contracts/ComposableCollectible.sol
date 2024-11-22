@@ -5,7 +5,12 @@ import {IERC165} from "../interfaces/IERC165.sol";
 import {Collectible} from "./Collectible.sol";
 
 contract ComposableCollectible is IERC721, IERC165 {
+
+    // contracts
+    Collectible public collectibleContract;
     
+
+    // Struct for composableCollectiblesMetadata
     struct Metadata {
         address owner;
         address previousOwner;
@@ -13,30 +18,28 @@ contract ComposableCollectible is IERC721, IERC165 {
         uint256[] composableTokens;
     }
     
+
+    // contract-level state variables
     bytes4 private constant INTERFACE_ID_ERC721 = 0x80ac58cd;
-
-    Collectible public collectibleContract;
-
     address public owner;
-    
     uint256 public tokenId;
     
+
+    // Storage Memory
     mapping(uint256 => uint256 ) public tokenIdToComposableIndex;
     mapping(uint256 => uint256) public tokenIdToComposableTokenId;
     mapping(address => mapping (address => bool)) private operatorApprovalsForAll;
     mapping(uint256 => address) private operatorApprovals;
-
     // storage of ComposableCollectibles
     mapping(uint256 => Metadata) public composableCollectiblesMetadata;
     // Keep Track of the total number of tokens a user has
     mapping(address => uint256) private balances;
 
     // Events from IERC721
-    /*
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
     event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
     event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
-    */
+
 
     // Constructor
     constructor() public {
@@ -44,21 +47,26 @@ contract ComposableCollectible is IERC721, IERC165 {
         tokenId = 1;
     }
 
+
+    // modifiers
     modifier isOwner() {
         require(msg.sender == owner, "Caller is not the owner");
         _;
     }
 
+    // receiver cannot be null or 0
     modifier toCannotBeZero(address _to) {
         require(_to != address(0), "Invalid address");
         _;
     }
-
+    
+    // sender cannot be null or 0
     modifier fromCannotBeZero(address _from) {
         require(_from != address(0), "Invalid address");
         _;
     }
 
+    // caller is the owner
     modifier isTokenOwner(uint256 _tokenId, address _owner) {
         require(composableCollectiblesMetadata[_tokenId].owner == _owner, "Not the owner of the token");
         _;
@@ -169,11 +177,13 @@ contract ComposableCollectible is IERC721, IERC165 {
         emit Transfer(_from, _to, _tokenId);
     }
 
+    // prevent extra data from being sent
     function safeTransferFrom(address _from , address _to, uint256 _tokenId, bytes calldata _data) external {
         require(_data.length == 0, "Data must be empty");
         safeTransferFrom(_from, _to, _tokenId);
     }
 
+    // delgates extra data to empty bytes
     function transferFrom(address _from, address _to, uint256 _tokenId) external {
         safeTransferFrom(_from, _to, _tokenId);
     }
@@ -201,6 +211,7 @@ contract ComposableCollectible is IERC721, IERC165 {
     }
 
 
+    // mint a new composable collectible
     function mint(address _to, address _artist) external isOwner() {
         composableCollectiblesMetadata[tokenId] = Metadata( _to, address(0), _artist, new uint256[](0));
         balances[_to] += 1;

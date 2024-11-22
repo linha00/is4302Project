@@ -5,6 +5,7 @@ import {IERC165} from "../interfaces/IERC165.sol";
 
 contract Supporter is IERC721, IERC165 {
     
+    // Struct for supportersMetadata
     struct Metadata {
         uint256 concertId;
         string tokenURI;
@@ -14,12 +15,13 @@ contract Supporter is IERC721, IERC165 {
         bool transferrable;
     }
 
+    // Contract-level state variables
     bytes4 private constant INTERFACE_ID_ERC721 = 0x80ac58cd;
-
     address public owner;
-    
     uint256 public tokenId;
 
+
+    // Storage Memory
     mapping(address=> mapping (address => bool)) private operatorApprovalsForAll;
     mapping(uint256 => address) private operatorApprovals;
     mapping(uint256 => Metadata) public supportersMetadata;
@@ -27,39 +29,44 @@ contract Supporter is IERC721, IERC165 {
     // Keep Track of the total number of Token a user has
     mapping(address => uint256) private balances;
 
+
     // Events from IERC721
-    /*
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
     event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
     event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
-    */
+
 
     // Constructor
     constructor() public {
         owner = msg.sender;
     }
 
+
+    // modifiers 
     modifier isOwner() {
         require(msg.sender == owner, "Caller is not the owner");
         _;
     }
 
+    // reciever cannt be null or 0
     modifier toCannotBeZero(address _to) {
         require(_to != address(0), "Invalid address");
         _;
     }
 
+    // sender cannot be null or 0
     modifier fromCannotBeZero(address _from) {
         require(_from != address(0), "Invalid address");
         _;
     }
 
+    // caller is the owner
     modifier isTokenOwner(uint256 _tokenId, address _owner) {
         require(supportersMetadata[_tokenId].owner == _owner, "Not the owner of the token");
         _;
     }
 
-
+    // check if the sender is an approved operator for the token
     modifier checkApproval(address _from, address _to, uint256 _tokenId) {
         if(msg.sender != _from) {
             require( msg.sender == owner || operatorApprovalsForAll[supportersMetadata[_tokenId].owner][msg.sender] == true || operatorApprovals[_tokenId] == msg.sender || approvedMinters[msg.sender], "Caller is not approved to transfer this token");
@@ -109,8 +116,7 @@ contract Supporter is IERC721, IERC165 {
         balances[_from] -= 1;
         balances[_to] += 1;
     }
-
-
+    
     function safeTransferFrom(address _from, address _to, uint256 _tokenId) public 
         isTransferrable(_tokenId) 
         toCannotBeZero(_to) 
@@ -123,15 +129,18 @@ contract Supporter is IERC721, IERC165 {
             emit Transfer(_from, _to, _tokenId);
     }
 
+    // prevent extra data from being sent
     function safeTransferFrom(address _from , address _to, uint256 _tokenId, bytes calldata _data) external {
         require(_data.length == 0, "Data must be empty");
         safeTransferFrom(_from, _to, _tokenId);
     }
 
+    // delgates extra data to empty bytes
     function transferFrom(address _from, address _to, uint256 _tokenId) external {
         safeTransferFrom(_from, _to, _tokenId);
     }
 
+    // approve the transcation
     function approve(address _approved, uint256 _tokenId) external tokenExists(_tokenId) {
         //The caller must own the token or be an approved operator.
         require (msg.sender == owner || operatorApprovalsForAll[supportersMetadata[_tokenId].owner][msg.sender] == true, "Caller is not approved to approve this token"); 
@@ -139,12 +148,14 @@ contract Supporter is IERC721, IERC165 {
         emit Approval(msg.sender, _approved, _tokenId);
     }
 
+    // set approval for all 
     function setApprovalForAll(address _operator, bool _approved) external{
         require(_operator != address(0), "Operator address cannot be zero"); 
         operatorApprovalsForAll[msg.sender][_operator] = _approved;
         emit ApprovalForAll(owner, _operator, _approved);
     }
 
+    // get the total number of token minted for the concert
     function getSuppoterForConcert(uint256 _concertId) external view returns (address[] memory) {
         address[] memory supporters = new address[](tokenId);
         for(uint256 i = 0; i < tokenId; i++) {
@@ -169,6 +180,7 @@ contract Supporter is IERC721, IERC165 {
         supportersMetadata[_tokenId].transferrable = _transferrable;
     }
 
+    // mint a new token 
     function mint(address _to, uint256 _concertId, string calldata _tokenURI, address _artist) external  returns (uint256) {
         require(msg.sender == owner || approvedMinters[msg.sender], "Caller is not the owner or approved");
         supportersMetadata[tokenId] = Metadata(_concertId, _tokenURI, _to, address(0), _artist, false);

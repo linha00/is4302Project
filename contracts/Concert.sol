@@ -49,8 +49,13 @@ library SafeMath {
 
 // Main Concert contract to manage concert creation, ticket sales, and payouts.
 contract Concert  {
-
     using SafeMath for uint256;
+
+
+    // contracts
+    Supporter public supporterContract;
+    Ticket public ticketContract;
+
 
     // Struct for Concert Listing
     struct Listing {
@@ -67,7 +72,16 @@ contract Concert  {
         uint256 generalSaleTicketPrice;
     }
     
-    // Storage Memory for Concert
+
+    // Contract-level state variables
+    uint256 public defaultConcertPlatformPayoutPercentage;
+    uint256 public defaultTicketPlatformFeePercentage;
+    uint256 concertID;
+    uint256 balances;
+    address owner;
+
+
+    // Storage Memory
     mapping(uint256 => Listing) public Listings;
     mapping(address => bool) public organisersApproval;
     mapping(address => bool) public venuesApproval;
@@ -80,20 +94,11 @@ contract Concert  {
     // Enum for Concert State
     enum ConcertState {  PreSale, PreSaleOver, GeneralSale, SoldOut, Cancelled, Payout, Created,  PendingArtistApproval, ArtistApproved, PendingVenueApproval, VenueApproved, OrganiserApproved, Live }
 
-    // Contract-level state variables
-    uint256 public defaultConcertPlatformPayoutPercentage;
-    uint256 public defaultTicketPlatformFeePercentage;
-
-    uint256 concertID;
-    uint256 balances;
-
-    Supporter public supporterContract;
-    Ticket public ticketContract;
-    address owner;
 
     // Events to log concert status and ticket purchases
     event ConcertStatus(uint256 indexed concertID, ConcertState indexed concertState);
     event TicketPurchase(uint256 indexed concertID, uint256 indexed supporterNFTID , uint256 indexed ticketID);
+
 
     // Constructor to initialize the contract
     constructor(Ticket _ticketAddress, Supporter _supporterAddress) public {
@@ -105,6 +110,7 @@ contract Concert  {
         defaultTicketPlatformFeePercentage = 5;
     }
 
+    // modifiers
     // Check to restrict access to only approved organisers
     modifier onlyApprovedOrganiser() {
         require(organisersApproval[msg.sender] == true, "Organiser not approved");
