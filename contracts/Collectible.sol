@@ -110,6 +110,7 @@ contract Collectible is IERC721, IERC165 {
         balances[_to] += 1;
     }
 
+    // Function to transfer a token safely from one address to another
     function safeTransferFrom(address _from, address _to, uint256 _tokenId) public 
             toCannotBeZero(_to) 
             fromCannotBeZero(_from) 
@@ -119,6 +120,7 @@ contract Collectible is IERC721, IERC165 {
 
         updateTokenOwner(_tokenId, _to, _from);
         removeApproval(_tokenId);
+        // Emit a Transfer event to notify that the token has been transferred
         emit Transfer(_from, _to, _tokenId);
     }
 
@@ -131,16 +133,20 @@ contract Collectible is IERC721, IERC165 {
         safeTransferFrom(_from, _to, _tokenId);
     }
 
+    // Function to approve an address to manage a specific token
     function approve(address _approved, uint256 _tokenId) external tokenExists(_tokenId) {
         //The caller must own the token or be an approved operator.
         require (msg.sender == owner || operatorApprovalsForAll[collectiblesMetadata[_tokenId].owner][msg.sender] == true, "Caller is not approved to approve this token"); 
         operatorApprovals[_tokenId] = _approved;
+        // Emit an Approval event to notify of the approval
         emit Approval(msg.sender, _approved, _tokenId);
     }
 
+    // Function to approve or revoke approval for an operator to manage all tokens of the caller
     function setApprovalForAll(address _operator, bool _approved) external{
         require(_operator != address(0), "Operator address cannot be zero"); 
         operatorApprovalsForAll[msg.sender][_operator] = _approved;
+        // Emit an ApprovalForAll event to notify of the change
         emit ApprovalForAll(owner, _operator, _approved);
     }
 
@@ -149,22 +155,26 @@ contract Collectible is IERC721, IERC165 {
         return operatorApprovals[_tokenId];
     } 
 
+    // Function to check if an operator is approved to manage all tokens of an owner
     function isApprovedForAll(address _owner, address _operator) external view returns (bool) {
         return operatorApprovalsForAll[_owner][_operator];
     }
 
-
+    // Function to mint a new token
     function mint(address _to, string calldata _tokenURI, address _artist, bool _isComposable) external isOwner() {
         collectiblesMetadata[tokenId] = Metadata(_tokenURI, _to, address(0), _artist, _isComposable);
         balances[_to] += 1;
         tokenId += 1;
+        // Emit a Transfer event to notify of the new token creation
         emit Transfer(address(0), _to, tokenId);
     }
 
+    // Function to retrieve the latest token ID
     function getLatestTokenId() external view returns (uint256) {
         return tokenId;
     }
 
+    // Function to get the artist associated with a specific token
     function getArtist(uint256 _tokenId) external view tokenExists(_tokenId) returns (address) {
         return collectiblesMetadata[_tokenId].artist;
     }

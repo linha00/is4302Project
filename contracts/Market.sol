@@ -173,11 +173,13 @@ contract Market {
 
     }
 
+    // Purchase a listed item
     function buy(uint256 _listingId) external payable isValidListing(_listingId) {
         require(listingState[_listingId]  == ListingState.Listed, "Listing is not for sale");
 
         require(msg.value >= Listings[_listingId].listingPrice, "Insufficient amount paid for NFT");
         
+        // Transfer the NFT to the buyer
         if(Listings[_listingId].tokenType == TokenType.Ticket){
             ticketContract.safeTransferFrom(address(this), msg.sender, Listings[_listingId].tokenId);
             ticketMapping[Listings[_listingId].tokenId] = false;
@@ -190,6 +192,7 @@ contract Market {
             require(false, "Invalid token type");
         }
 
+        // Update listing state to sold
         listingState[_listingId] = ListingState.Sold;
 
         // Return any change
@@ -206,6 +209,8 @@ contract Market {
         // Pay the Seller
         (bool sentSeller, ) = Listings[_listingId].seller.call.value(Listings[_listingId].listingPrice - artistRoyaltyFee - platformFee)("");
         require(sentSeller, "Failed to Pay Seller");
+        
+        // Emit event for the sale
         emit ListingEvent(_listingId, Listings[_listingId].tokenId, Listings[_listingId].tokenType, ListingState.Sold);
     }
 }
