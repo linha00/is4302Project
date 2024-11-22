@@ -1,0 +1,149 @@
+{
+	"info": {
+		"_postman_id": "48f3de57-2c22-4d80-b991-a121fcddfa94",
+		"name": "Blockchain",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "27316327"
+	},
+	"item": [
+		{
+			"name": "/concerts",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"concert_name\": \"BYD\",\n\t\"artist_address\": \"0xf70Cd95A615283A8CCc3867936ceB01f8b9fF182\",\n    \"venue_address\": \"0xD118B594Bf68a3196eaCacdA7ED18b232bf15313\",\n    \"organiser_address\": \"0xe7DBED92D013E4c08b9186cC109eE3d85605611A\",\n    \"organiser_private_key\": \"0xdc3e738f92f51504e16ab53a1e813eb8ebdc67e1383d8c0b61f3251f7893b920\",\n    \"artist_payout_percentage\": 40,\n    \"organiser_payout_percentage\": 40,\n    \"venue_payout_percentage\": 10,\n    \"total_tickets\": 100,\n    \"pre_sale_quality\": 0,\n    \"pre_sale_ticket_price\": 0,\n    \"general_sale_ticket_price\": 30,\n    \"concert_description\": \"Build Your Dream\",\n    \"concert_start_datetime_str\": \"2025-01-31 20:00:00\",\n    \"pre_sale_start_datetime_str\": \"\",\n    \"pre_sale_end_datetime_str\": \"\",\n    \"general_sale_start_datetime_str\": \"2025-01-20 20:00:00\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseurl}}/concerts",
+					"host": [
+						"{{baseurl}}"
+					],
+					"path": [
+						"concerts"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/web3/health",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseurl}}/web3/health",
+					"host": [
+						"{{baseurl}}"
+					],
+					"path": [
+						"web3",
+						"health"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/collectibles",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "artist_address",
+							"value": "0x697CB4512C5Bd942505944334d9Aab5005069E63",
+							"type": "text"
+						},
+						{
+							"key": "artist_private_key",
+							"value": "0x6e31bcaf0677ea79e5833d46f91a29a8cfac1e982ed8514dded21618cf31b335",
+							"type": "text"
+						},
+						{
+							"key": "file",
+							"type": "file",
+							"src": "/Users/henryng/Pictures/download.jpeg"
+						},
+						{
+							"key": "nft_name",
+							"value": "Concert",
+							"type": "text"
+						},
+						{
+							"key": "nft_description",
+							"value": "Concert Photo",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseurl}}/collectibles",
+					"host": [
+						"{{baseurl}}"
+					],
+					"path": [
+						"collectibles"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/collectibles/composable",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "artist_address",
+							"value": "0x697CB4512C5Bd942505944334d9Aab5005069E63",
+							"type": "text"
+						},
+						{
+							"key": "artist_private_key",
+							"value": "0x6e31bcaf0677ea79e5833d46f91a29a8cfac1e982ed8514dded21618cf31b335",
+							"type": "text"
+						},
+						{
+							"key": "file",
+							"type": "file",
+							"src": "/Users/henryng/Pictures/123123123123.jpeg"
+						},
+						{
+							"key": "nft_name",
+							"value": "Concert",
+							"type": "text"
+						},
+						{
+							"key": "nft_description",
+							"value": "Concert Photo",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseurl}}/collectibles/composable",
+					"host": [
+						"{{baseurl}}"
+					],
+					"path": [
+						"collectibles",
+						"composable"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

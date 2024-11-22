@@ -367,28 +367,4 @@ contract Concert  {
     }
 
 
-
-    // function transferNFTToAttendees(uint256 _concertID, uint256[] calldata _ticketIDs) external {
-    //     // Ensure the caller is the artist of the concert
-    //     Listing storage listing = Listings[_concertID];
-    //     require(msg.sender == listing.artist, "Caller is not the artist of the concert");
-
-    //     // Ensure the concert is in a state where NFT transfers are allowed
-    //     require(listing.concertState == uint256(ConcertState.SoldOut), "Concert is not in a SoldOut state");
-
-    //     // Loop through the list of ticket IDs and transfer the NFT to ticket holders
-    //     for (uint256 i = 0; i < _ticketIDs.length; i++) {
-    //         address attendee = ticketContract.ownerOf(_ticketIDs[i]);
-    //         require(attendee != address(0), "Invalid ticket owner");
-
-    //         // Transfer the NFT collectible to the attendee
-    //         ticketContract.transferFrom(msg.sender, attendee, _ticketIDs[i]);
-    //     }
-
-    //     emit NFTTransferredToAttendees(_concertID, _ticketIDs);
-    // }
-
-    // // Event for tracking NFT transfers
-    // event NFTTransferredToAttendees(uint256 indexed concertID, uint256[] ticketIDs);
-
 }

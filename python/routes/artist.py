@@ -77,8 +77,8 @@ async def create_collectible(
 
 
     # Delete The File
-    os.remove(file_path)
-    os.remove(metadata_path)
+    # os.remove(file_path)
+    # os.remove(metadata_path)
 
     return {
         "message": "Collectible Created",
@@ -171,10 +171,10 @@ async def create_collectible(
 
 
     # Delete The File
-    os.remove(file_path)
-    os.remove(metadata_path)
-    for image_path in split_image_paths:
-        os.remove(image_path)
+    # os.remove(file_path)
+    # os.remove(metadata_path)
+    # for image_path in split_image_paths:
+    #     os.remove(image_path)
 
     return {
         "message": "Collectible Created",

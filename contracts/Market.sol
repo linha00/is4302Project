@@ -18,8 +18,6 @@ contract Market {
        address artist;
     }
 
-    
-
     enum ListingState {Listed, Unlisted, Sold}
     enum TokenType {Ticket, Collectible}
 
@@ -72,10 +70,6 @@ contract Market {
 
     function getTokenId(uint256 _listingId) public view isValidListing(_listingId) returns (uint256) {
         return Listings[_listingId].tokenId;
-    }
-
-    function testCalculation(uint256 _listingPrice) public view returns (uint256) {
-        return (_listingPrice - platformFee - artistRoyaltyFee);
     }
 
     function selfdestructContract() external onlyOwner() {

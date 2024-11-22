@@ -81,8 +81,6 @@ contract Supporter is IERC721, IERC165 {
         approvedMinters[_minter] = true;
     }
 
-
-    
     function supportsInterface(bytes4 interfaceId) public view returns (bool) {
     return 
         interfaceId == INTERFACE_ID_ERC721;
@@ -113,10 +111,16 @@ contract Supporter is IERC721, IERC165 {
     }
 
 
-    function safeTransferFrom(address _from, address _to, uint256 _tokenId) public isTransferrable(_tokenId) toCannotBeZero(_to) fromCannotBeZero(_from) tokenExists(_tokenId) isTokenOwner(_tokenId, _from) checkApproval(msg.sender, _to, _tokenId) {
-        updateTokenOwner(_tokenId, _to, _from);
-        removeApproval(_tokenId);
-        emit Transfer(_from, _to, _tokenId);
+    function safeTransferFrom(address _from, address _to, uint256 _tokenId) public 
+        isTransferrable(_tokenId) 
+        toCannotBeZero(_to) 
+        fromCannotBeZero(_from) 
+        tokenExists(_tokenId) i
+        sTokenOwner(_tokenId, _from) 
+        checkApproval(msg.sender, _to, _tokenId) {
+            updateTokenOwner(_tokenId, _to, _from);
+            removeApproval(_tokenId);
+            emit Transfer(_from, _to, _tokenId);
     }
 
     function safeTransferFrom(address _from , address _to, uint256 _tokenId, bytes calldata _data) external {
