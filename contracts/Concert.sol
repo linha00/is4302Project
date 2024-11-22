@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 import "./Supporter.sol";
 import "./Ticket.sol";
 
+// SafeMath library to perform safe arithmetic operations (addition, subtraction, multiplication, division).
 library SafeMath {
 
   /**
@@ -46,6 +47,7 @@ library SafeMath {
   }
 }
 
+// Main Concert contract to manage concert creation, ticket sales, and payouts.
 contract Concert  {
 
     using SafeMath for uint256;
@@ -78,6 +80,7 @@ contract Concert  {
     // Enum for Concert State
     enum ConcertState {  PreSale, PreSaleOver, GeneralSale, SoldOut, Cancelled, Payout, Created,  PendingArtistApproval, ArtistApproved, PendingVenueApproval, VenueApproved, OrganiserApproved, Live }
 
+    // Contract-level state variables
     uint256 public defaultConcertPlatformPayoutPercentage;
     uint256 public defaultTicketPlatformFeePercentage;
 
@@ -88,11 +91,11 @@ contract Concert  {
     Ticket public ticketContract;
     address owner;
 
-    // Events
+    // Events to log concert status and ticket purchases
     event ConcertStatus(uint256 indexed concertID, ConcertState indexed concertState);
     event TicketPurchase(uint256 indexed concertID, uint256 indexed supporterNFTID , uint256 indexed ticketID);
 
-    // Constructor
+    // Constructor to initialize the contract
     constructor(Ticket _ticketAddress, Supporter _supporterAddress) public {
         ticketContract = _ticketAddress;
         supporterContract = _supporterAddress;
@@ -102,38 +105,40 @@ contract Concert  {
         defaultTicketPlatformFeePercentage = 5;
     }
 
-    // Check that Organiser is Approved
+    // Check to restrict access to only approved organisers
     modifier onlyApprovedOrganiser() {
         require(organisersApproval[msg.sender] == true, "Organiser not approved");
         _;
     }
 
+    // Check to restrict access to the contract owner
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner can call this function");
         _;
     }   
 
+    // Check to ensure the concert exists
     modifier concertExists(uint256 _concertID) {
         require(Listings[_concertID].artist != address(0), "Concert does not exist");
         _;
     }
 
-
-    // Approve Organiser
+    // Function to approve an organiser. Only the owner can call this
     function approveOrganiser(address _organiser) external onlyOwner {
         organisersApproval[_organiser] = true;
     }
 
-    // Approve Venue
+    // Function to approve a venue. Only the owner can call this
     function approveVenue(address _venue) external onlyOwner {
         venuesApproval[_venue] = true;
     }
 
-    // Approve Artist
+    // Function to approve an artist. Only the owner can call this
     function approveArtist(address _artist) external onlyOwner {
         artistsApproval[_artist] = true;
     }
 
+    // Allows an approved venue to approve a concert and change its state
     function updateVenueStateApproval(uint256 _concertId) external  {
         require(venuesApproval[msg.sender] == true, "Venue not approved");
         require(Listings[_concertId].venue == msg.sender, "Venue not the same as concert venue");
@@ -146,7 +151,7 @@ contract Concert  {
         selfdestruct(msg.sender);
     }
 
-    // Function to create a new concert listing
+    // Function to allow approved organiser to create a new concert listing
     function createConcert(
         address _artist,
         address _venue,
@@ -162,7 +167,7 @@ contract Concert  {
        
         //Error Checking
 
-        //Payout Check
+        //Validate payout percentages
         require(_artistPayoutPercentage > 0, "Artist Payout Percentage must be greater than or equal to 0");
         require(_artistPayoutPercentage <= 100, "Artist Payout Percentage must be less than or equal to 100");
         require(_organiserPayoutPercentage > 0, "Organiser Payout Percentage must be greater than or equal to 0");
@@ -171,14 +176,15 @@ contract Concert  {
         require(_venuePayoutPercentage <= 100, "Venue Payout Percentage must be less than or equal to 100");
         require(_artistPayoutPercentage + _organiserPayoutPercentage + _venuePayoutPercentage + defaultConcertPlatformPayoutPercentage == 100, "Total Payout Percentage must be equal to 100");
 
-        //Total Tickets Check
+        // Validate ticket details
         require(_totalTickets > 0, "Total Tickets must be greater than 0");
         require(_preSaleQuality < _totalTickets, "Pre Sale Quality must be less than Total Tickets");
 
-        //Ticket Price Check
+        // Validate ticket prices
         require(_preSaleTicketPrice >= 0, "Pre Sale Ticket Price must be greater than 0");
         require(_generalSaleTicketPrice >= 0, "General Sale Ticket Price must be greater than 0");
 
+        // Create a new listing
         Listings[concertID] = Listing(
             _artist,
             _venue,
@@ -213,15 +219,17 @@ contract Concert  {
         return listing;
     } 
 
+    // Returns the details of a specific concert listing
     function getListing(uint256 _concertID) external view returns (Listing memory) {
         return Listings[_concertID];
     }
 
+    // Returns the current state of a specific concert
     function getConcertState(uint256 _concertID) external view returns (ConcertState) {
         return concertState[_concertID];
     }
 
-    // Artist approve Concert
+    // Allows an approved artist to approve a concert and change its state
     function updateArtistStateApproval(uint256 _concertID) external {
         
         require(artistsApproval[msg.sender] == true, "Artist not approved");
@@ -251,6 +259,7 @@ contract Concert  {
         return organisersApproval[organiser];
     }
 
+    // Allows an approved organiser to update the concert state to live or canceled
     function organiserUpdateState(uint256 _concertID, uint256 _newState) external onlyApprovedOrganiser() {
         require(concertState[_concertID]==ConcertState.PreSale || concertState[_concertID]==ConcertState.PreSaleOver || concertState[_concertID]==ConcertState.GeneralSale|| concertState[_concertID]==ConcertState.SoldOut, "Invalid Concert State");
         require(_newState == uint256(ConcertState.Cancelled) ||  _newState == uint256(ConcertState.Live), "Invalid Concert State");
@@ -258,7 +267,7 @@ contract Concert  {
         emit ConcertStatus(_concertID, ConcertState(_newState));
     }
 
-
+    // Allows users to buy a ticket for a concert, with distinct logic for pre-sale and general sale
     function buyTicket(uint256 _concertID, string calldata ticketURI, string calldata supporterURI) external payable concertExists(_concertID) {
         require(concertState[_concertID] == ConcertState.PreSale || concertState[_concertID] == ConcertState.GeneralSale, "Tickets are not on sale now");
         //Pre sale
@@ -319,6 +328,7 @@ contract Concert  {
         return concertID;
     }
 
+    // Triggers payouts for a live concert, distributing funds to the artist, organiser, and venue
     function triggerPayout(uint256 _concertID) external onlyOwner() {
         // Fetch the concert details
         Listing storage listing = Listings[_concertID];
@@ -329,7 +339,7 @@ contract Concert  {
         // Calculate total funds collected (ticketsSold * ticket price, assuming one price for simplicity)
         uint256 totalFunds = (ticketsSold[_concertID] * listing.generalSaleTicketPrice) + (preSaleticketsSold[_concertID] * listing.preSaleTicketPrice);
 
-        // Ensure the contract has sufficient balance
+        // Ensure the contract balance is sufficient for the payouts
         require(balances >= totalFunds, "Insufficient contract balance for payouts");
 
 
@@ -365,6 +375,46 @@ contract Concert  {
         concertState[_concertID] = ConcertState.Payout;
         emit ConcertStatus(_concertID, ConcertState.Payout);
     }
+
+
+    // function transferNFTToAttendees(uint256 _concertID, uint256[] calldata _ticketIDs) external {
+    //     // Ensure the caller is the artist of the concert
+    //     Listing storage listing = Listings[_concertID];
+    //     require(msg.sender == listing.artist, "Caller is not the artist of the concert");
+
+    //     // Ensure the concert is in a state where NFT transfers are allowed
+    //     require(listing.concertState == uint256(ConcertState.SoldOut), "Concert is not in a SoldOut state");
+
+    //     // Loop through the list of ticket IDs and transfer the NFT to ticket holders
+    //     for (uint256 i = 0; i < _ticketIDs.length; i++) {
+    //         address attendee = ticketContract.ownerOf(_ticketIDs[i]);
+    //         require(attendee != address(0), "Invalid ticket owner");
+
+    //         // Transfer the NFT collectible to the attendee
+    //         ticketContract.transferFrom(msg.sender, attendee, _ticketIDs[i]);
+    //     }
+
+    //     emit NFTTransferredToAttendees(_concertID, _ticketIDs);
+    // }
+
+    // // Event for tracking NFT transfers
+    // event NFTTransferredToAttendees(uint256 indexed concertID, uint256[] ticketIDs);
+
+    //function transferNFTToPresaleAttendees(uint256 _concertID, uint256[] calldata _ticketIDs) external{
+    //    Listing storage listing = Listings[_concertID];
+    //    require(msg.sender == listing.artist, "Caller is not the artist of the concert");
+
+    //    for(uint256 i = 0; i < _ticketIDs.length; i++){
+    //        address attendee = ticketContract.ownerOf(_ticketIDs[i]);
+    //        require(attendee != address(0), "Invalid ticket owner");
+
+    //        require(supporterTokenContract.balanceOf(attendee) > 0, "Attendee does not own a supporter token");
+    //        ticketContract.transferFrom(msg.sender, attendee, _ticketIDs[i]);
+    //    }
+    //    emit transferNFTToPresaleAttendees(_concertID, _ticketIDs);
+
+    //}
+    //event transferNFTToPresaleAttendees(uint256 concertID, uint256[] ticketIDs);
 
 
 }
